@@ -1,55 +1,50 @@
 import { Injectable, ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as crypto from 'crypto';
-
-type Admin = {
-    id: string;
-    name: string;
-    email: string;
-    passwordHash: string;
-    salt: string;
-    role?: string;
-};
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AdminService {
-    // start with no admins
-    private admins: Admin[] = [];
-    private tokens = new Map<string, string>(); // token -> adminId
-
-    constructor() { }
+    constructor(private prisma: PrismaService) { }
 
     private hashPassword(password: string, salt: string) {
         return crypto.scryptSync(password, salt, 64).toString('hex');
     }
 
-    private sanitize(admin: Admin) {
-        const { passwordHash, salt, ...rest } = admin;
-        return rest;
+    private sanitize(admin: { id: string; name: string; email: string; role: string | null; createdAt: Date; updatedAt: Date }) {
+        return {
+            id: admin.id,
+            name: admin.name,
+            email: admin.email,
+            role: admin.role,
+        };
     }
 
     async signup(payload: { name: string; email: string; password: string }) {
-        const exists = this.admins.find(a => a.email === payload.email.toLowerCase());
+        const exists = await this.prisma.admin.findUnique({
+            where: { email: payload.email.toLowerCase() }
+        });
         if (exists) throw new ConflictException('Email already in use');
 
         const salt = crypto.randomBytes(16).toString('hex');
         const passwordHash = this.hashPassword(payload.password, salt);
-        const id = crypto.randomBytes(8).toString('hex');
 
-        const admin: Admin = {
-            id,
-            name: payload.name,
-            email: payload.email.toLowerCase(),
-            salt,
-            passwordHash,
-            role: 'admin',
-        };
+        const admin = await this.prisma.admin.create({
+            data: {
+                name: payload.name,
+                email: payload.email.toLowerCase(),
+                salt,
+                passwordHash,
+                role: 'admin',
+            }
+        });
 
-        this.admins.push(admin);
         return this.sanitize(admin);
     }
 
     async login(payload: { email: string; password: string }) {
-        const admin = this.admins.find(a => a.email === payload.email.toLowerCase());
+        const admin = await this.prisma.admin.findUnique({
+            where: { email: payload.email.toLowerCase() }
+        });
         if (!admin) throw new NotFoundException('Invalid credentials');
 
         const attempted = this.hashPassword(payload.password, admin.salt);
@@ -58,112 +53,141 @@ export class AdminService {
         }
 
         const token = crypto.randomBytes(32).toString('hex');
-        this.tokens.set(token, admin.id);
+        await this.prisma.session.create({
+            data: {
+                id: token,
+                adminId: admin.id,
+            }
+        });
+
         return { token, user: this.sanitize(admin) };
     }
 
     async logout(token: string) {
         if (!token) throw new UnauthorizedException();
-        const existed = this.tokens.delete(token);
-        if (!existed) throw new NotFoundException('Session not found');
+        const session = await this.prisma.session.delete({
+            where: { id: token }
+        }).catch(() => null);
+
+        if (!session) throw new NotFoundException('Session not found');
         return { success: true };
     }
 
     async validateToken(token: string) {
         if (!token) throw new UnauthorizedException();
-        const adminId = this.tokens.get(token);
-        if (!adminId) throw new UnauthorizedException();
-        const admin = this.admins.find(a => a.id === adminId);
-        if (!admin) {
-            this.tokens.delete(token);
-            throw new NotFoundException('Admin not found');
-        }
-        return this.sanitize(admin);
+        const session = await this.prisma.session.findUnique({
+            where: { id: token },
+            include: { admin: true }
+        });
+
+        if (!session) throw new UnauthorizedException();
+        return this.sanitize(session.admin);
     }
 
-    findAllUsers() {
-        return this.admins.map(a => this.sanitize(a));
+    async findAllUsers() {
+        const admins = await this.prisma.admin.findMany();
+        return admins.map(a => this.sanitize(a));
     }
 
-    findUserById(id: string) {
-        const user = this.admins.find(u => u.id === id);
+    async findUserById(id: string) {
+        const user = await this.prisma.admin.findUnique({
+            where: { id }
+        });
         if (!user) throw new NotFoundException('User not found');
         return this.sanitize(user);
     }
 
-    createUser(payload: { name: string; email: string; password?: string; role?: string }) {
-        const exists = this.admins.find(a => a.email === payload.email.toLowerCase());
+    async createUser(payload: { name: string; email: string; password?: string; role?: string }) {
+        const exists = await this.prisma.admin.findUnique({
+            where: { email: payload.email.toLowerCase() }
+        });
         if (exists) throw new ConflictException('Email already in use');
 
-        const id = crypto.randomBytes(8).toString('hex');
         const salt = crypto.randomBytes(16).toString('hex');
         const password = payload.password ?? Math.random().toString(36).slice(-10);
         const passwordHash = this.hashPassword(password, salt);
 
-        const admin: Admin = {
-            id,
-            name: payload.name,
-            email: payload.email.toLowerCase(),
-            salt,
-            passwordHash,
-            role: payload.role ?? 'admin',
-        };
+        const admin = await this.prisma.admin.create({
+            data: {
+                name: payload.name,
+                email: payload.email.toLowerCase(),
+                salt,
+                passwordHash,
+                role: payload.role ?? 'admin',
+            }
+        });
 
-        this.admins.push(admin);
-        // return sanitized user and (for convenience) generated password when one was generated
         const result: any = this.sanitize(admin);
         if (!payload.password) result.generatedPassword = password;
         return result;
     }
 
-    setPassword(adminId: string, newPassword: string) {
-        const admin = this.admins.find(a => a.id === adminId);
+    async setPassword(adminId: string, newPassword: string) {
+        const admin = await this.prisma.admin.findUnique({
+            where: { id: adminId }
+        });
         if (!admin) throw new NotFoundException('User not found');
 
         const salt = crypto.randomBytes(16).toString('hex');
-        admin.salt = salt;
-        admin.passwordHash = this.hashPassword(newPassword, salt);
-        // invalidate tokens for this admin
-        for (const [token, id] of Array.from(this.tokens.entries())) {
-            if (id === adminId) this.tokens.delete(token);
-        }
-        return this.sanitize(admin);
+        const passwordHash = this.hashPassword(newPassword, salt);
+
+        const updated = await this.prisma.admin.update({
+            where: { id: adminId },
+            data: { salt, passwordHash }
+        });
+
+        // Invalidate all sessions for this admin
+        await this.prisma.session.deleteMany({
+            where: { adminId }
+        });
+
+        return this.sanitize(updated);
     }
 
-    resetPasswordByEmail(email: string) {
-        const admin = this.admins.find(a => a.email === email.toLowerCase());
+    async resetPasswordByEmail(email: string) {
+        const admin = await this.prisma.admin.findUnique({
+            where: { email: email.toLowerCase() }
+        });
         if (!admin) throw new NotFoundException('User not found');
 
         const newPassword = Math.random().toString(36).slice(-10);
         const salt = crypto.randomBytes(16).toString('hex');
-        admin.salt = salt;
-        admin.passwordHash = this.hashPassword(newPassword, salt);
+        const passwordHash = this.hashPassword(newPassword, salt);
 
-        // invalidate tokens for this admin
-        for (const [token, id] of Array.from(this.tokens.entries())) {
-            if (id === admin.id) this.tokens.delete(token);
-        }
+        const updated = await this.prisma.admin.update({
+            where: { id: admin.id },
+            data: { salt, passwordHash }
+        });
 
-        // return newPassword so caller (or email sending) can communicate it to the user
-        return { ...this.sanitize(admin), newPassword };
+        // Invalidate all sessions for this admin
+        await this.prisma.session.deleteMany({
+            where: { adminId: admin.id }
+        });
+
+        return { ...this.sanitize(updated), newPassword };
     }
 
-    deleteUser(id: string) {
-        const idx = this.admins.findIndex(a => a.id === id);
-        if (idx === -1) throw new NotFoundException('User not found');
-
-        const [removed] = this.admins.splice(idx, 1);
-        // remove any tokens belonging to deleted user
-        for (const [token, uid] of Array.from(this.tokens.entries())) {
-            if (uid === id) this.tokens.delete(token);
-        }
-        return this.sanitize(removed);
-    }
-
-    assignRole(id: string, role: string) {
-        const admin = this.admins.find(a => a.id === id);
+    async deleteUser(id: string) {
+        const admin = await this.prisma.admin.findUnique({
+            where: { id }
+        });
         if (!admin) throw new NotFoundException('User not found');
-        admin.role = role;
+
+        // Sessions will be deleted automatically due to CASCADE
+        await this.prisma.admin.delete({
+            where: { id }
+        });
+
+        return this.sanitize(admin);
+    }
+
+    async assignRole(id: string, role: string) {
+        const admin = await this.prisma.admin.update({
+            where: { id },
+            data: { role }
+        }).catch(() => null);
+
+        if (!admin) throw new NotFoundException('User not found');
         return this.sanitize(admin);
     }
 }
