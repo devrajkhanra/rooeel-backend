@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Headers, Get, UnauthorizedException, Param, Put, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Headers, Get, UnauthorizedException, Param, Put, Delete, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { SignupAdminDto } from './dto/signup-admin.dto';
 import { LoginAdminDto } from './dto/login-admin.dto';
@@ -6,6 +6,7 @@ import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AssignRoleDto } from './dto/assign-role.dto';
+import { AuthGuard } from './auth.gaurd';
 
 @Controller('admin')
 export class AdminController {
@@ -43,31 +44,31 @@ export class AdminController {
     }
 
     // create user (admin-only)
-    @Post('users')
+    @Post('users') @UseGuards(AuthGuard)
     async createUser(@Body() body: CreateAdminDto) {
         return this.adminService.createUser(body as any);
     }
 
     // set password for a user (admin-only)
-    @Put('users/:id/password')
+    @Put('users/:id/password') @UseGuards(AuthGuard)
     async setPassword(@Param('id') id: string, @Body() body: UpdatePasswordDto) {
         return this.adminService.setPassword(id, body.password);
     }
 
     // reset password by email (admin-only) - returns generated password
-    @Post('users/reset-password')
+    @Post('users/reset-password') @UseGuards(AuthGuard)
     async resetPassword(@Body() body: ResetPasswordDto) {
         return this.adminService.resetPasswordByEmail(body.email);
     }
 
     // delete user
-    @Delete('users/:id')
+    @Delete('users/:id') @UseGuards(AuthGuard)
     async deleteUser(@Param('id') id: string) {
         return this.adminService.deleteUser(id);
     }
 
     // assign role
-    @Post('users/:id/role')
+    @Post('users/:id/role') @UseGuards(AuthGuard)
     async assignRole(@Param('id') id: string, @Body() body: AssignRoleDto) {
         return this.adminService.assignRole(id, body.role);
     }

@@ -1,10 +1,10 @@
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class SignupAdminDto {
-    @IsOptional()
+    @IsNotEmpty()
     @IsString()
-    name?: string;
+    name: string;
 
     @IsEmail()
     @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))

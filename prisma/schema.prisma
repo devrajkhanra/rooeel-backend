@@ -21,9 +21,9 @@ model Admin {
 }
 
 model Session {
-  id        String   @id
+  id        String    @id
   adminId   String
-  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   expiresAt DateTime?
+  admin     Admin     @relation(fields: [adminId], references: [id], onDelete: Cascade)
 }
