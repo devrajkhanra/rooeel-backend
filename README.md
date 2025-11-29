@@ -1,94 +1,103 @@
-# Rooeel Backend API
+# Rooeel Backend
 
-A NestJS-based backend API with admin authentication and user management, connected to Supabase PostgreSQL database via Prisma ORM.
+A NestJS-based backend API for admin user management with session-based authentication using PostgreSQL and Prisma ORM.
+
+## Features
+
+- 🔐 Session-based authentication with secure token management
+- 👥 Admin user management (CRUD operations)
+- 🔒 Password hashing with crypto scrypt
+- 🛡️ Role-based access control
+- ✅ Request validation with class-validator
+- 🗄️ PostgreSQL database with Prisma ORM
+- 🚀 CORS enabled for cross-origin requests
 
 ## Tech Stack
 
-- **Framework**: NestJS
-- **Database**: Supabase (PostgreSQL)
-- **ORM**: Prisma 5
-- **Authentication**: Token-based (stored in database)
-- **Validation**: class-validator & class-transformer
+- **Framework**: NestJS 11
+- **Database**: PostgreSQL
+- **ORM**: Prisma 5.22.0
+- **Validation**: class-validator, class-transformer
+- **Runtime**: Node.js
+- **Language**: TypeScript
 
-## Getting Started
+## Prerequisites
 
-### Prerequisites
+- Node.js (v16 or higher)
+- PostgreSQL (v12 or higher)
+- npm or yarn
 
-- Node.js (v18+)
-- npm
-- Supabase account with PostgreSQL database
+## Installation
 
-### Installation
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd rooeel-backend
+   ```
 
-```bash
-npm install
-```
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-### Environment Configuration
+3. **Set up PostgreSQL database**
+   
+   Create a PostgreSQL database named `rooeel_db`:
+   ```sql
+   CREATE DATABASE rooeel_db;
+   ```
 
-Create a `.env` file in the root directory:
+4. **Configure environment variables**
+   
+   Create a `.env` file in the root directory:
+   ```env
+   DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/rooeel_db"
+   ```
+   
+   Replace `YOUR_PASSWORD` with your PostgreSQL password.
 
-```env
-DATABASE_URL="postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-DIRECT_URL="postgresql://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
-```
+5. **Run Prisma migrations**
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
 
-- `DATABASE_URL`: Connection pooler URL (used by application)
-- `DIRECT_URL`: Direct connection URL (used for migrations)
+6. **Start the development server**
+   ```bash
+   npm run start:dev
+   ```
 
-### Database Setup
+   The API will be available at `http://localhost:3000`
 
-```bash
-# Generate Prisma Client
-npx prisma generate
+## Database Schema
 
-# Run migrations
-npx prisma migrate dev
+### Admin Table
+| Field        | Type     | Description                          |
+|--------------|----------|--------------------------------------|
+| id           | String   | Primary key (CUID)                   |
+| name         | String   | Admin user's name                    |
+| email        | String   | Unique email address                 |
+| passwordHash | String   | Hashed password                      |
+| salt         | String   | Salt for password hashing            |
+| role         | String?  | User role (default: 'admin')         |
+| createdAt    | DateTime | Timestamp of creation                |
+| updatedAt    | DateTime | Timestamp of last update             |
 
-# View database in Prisma Studio (optional)
-npx prisma studio
-```
-
-### Running the Application
-
-```bash
-# Development mode
-npm run start:dev
-
-# Production mode
-npm run build
-npm run start:prod
-```
-
-The API will be available at `http://localhost:3000`
+### Session Table
+| Field     | Type      | Description                          |
+|-----------|-----------|--------------------------------------|
+| id        | String    | Primary key (session token)          |
+| adminId   | String    | Foreign key to Admin                 |
+| createdAt | DateTime  | Timestamp of session creation        |
+| expiresAt | DateTime? | Optional expiration timestamp        |
 
 ## API Documentation
 
-### Base URL
+Base URL: `http://localhost:3000`
 
-```
-http://localhost:3000
-```
+### Authentication Endpoints
 
-### Authentication
-
-Protected endpoints require an `Authorization` header:
-
-```
-Authorization: Bearer <token>
-```
-
-Or simply:
-
-```
-Authorization: <token>
-```
-
----
-
-## Endpoints
-
-### 1. Signup
+#### 1. Signup (Create First Admin)
 
 Create a new admin account.
 
@@ -99,19 +108,19 @@ Create a new admin account.
 {
   "name": "John Doe",
   "email": "john@example.com",
-  "password": "password123"
+  "password": "securepassword123"
 }
 ```
 
-**Validation**:
-- `name`: Optional string (but required by controller logic)
-- `email`: Valid email, automatically lowercased and trimmed
-- `password`: String, minimum 8 characters
+**Validation Rules**:
+- `name`: Required, non-empty string
+- `email`: Required, valid email format
+- `password`: Required, minimum 8 characters
 
-**Response** (200):
+**Response** (200 OK):
 ```json
 {
-  "id": "cm4dj8k2l0000xyz",
+  "id": "clx1234567890abcdef",
   "name": "John Doe",
   "email": "john@example.com",
   "role": "admin"
@@ -120,11 +129,11 @@ Create a new admin account.
 
 **Error Responses**:
 - `409 Conflict`: Email already in use
-- `401 Unauthorized`: Name is required
+- `400 Bad Request`: Validation failed
 
 ---
 
-### 2. Login
+#### 2. Login
 
 Authenticate and receive a session token.
 
@@ -134,20 +143,20 @@ Authenticate and receive a session token.
 ```json
 {
   "email": "john@example.com",
-  "password": "password123"
+  "password": "securepassword123"
 }
 ```
 
-**Validation**:
-- `email`: Valid email, automatically lowercased and trimmed
-- `password`: String, minimum 8 characters
+**Validation Rules**:
+- `email`: Required, valid email format
+- `password`: Required, minimum 8 characters
 
-**Response** (200):
+**Response** (200 OK):
 ```json
 {
-  "token": "a1b2c3d4e5f6...",
+  "token": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
   "user": {
-    "id": "cm4dj8k2l0000xyz",
+    "id": "clx1234567890abcdef",
     "name": "John Doe",
     "email": "john@example.com",
     "role": "admin"
@@ -156,14 +165,14 @@ Authenticate and receive a session token.
 ```
 
 **Error Responses**:
-- `404 Not Found`: Invalid credentials
+- `404 Not Found`: Invalid credentials (user not found)
 - `401 Unauthorized`: Invalid credentials (wrong password)
 
 ---
 
-### 3. Logout
+#### 3. Logout
 
-Invalidate the current session token.
+Invalidate the current session.
 
 **Endpoint**: `POST /admin/logout`
 
@@ -172,7 +181,7 @@ Invalidate the current session token.
 Authorization: Bearer <token>
 ```
 
-**Response** (200):
+**Response** (200 OK):
 ```json
 {
   "success": true
@@ -185,9 +194,9 @@ Authorization: Bearer <token>
 
 ---
 
-### 4. Get Profile
+#### 4. Get Profile
 
-Get the current authenticated admin's profile.
+Retrieve the authenticated user's profile.
 
 **Endpoint**: `GET /admin/profile`
 
@@ -196,10 +205,10 @@ Get the current authenticated admin's profile.
 Authorization: Bearer <token>
 ```
 
-**Response** (200):
+**Response** (200 OK):
 ```json
 {
-  "id": "cm4dj8k2l0000xyz",
+  "id": "clx1234567890abcdef",
   "name": "John Doe",
   "email": "john@example.com",
   "role": "admin"
@@ -207,66 +216,83 @@ Authorization: Bearer <token>
 ```
 
 **Error Responses**:
-- `401 Unauthorized`: Authorization token is required / Invalid token
+- `401 Unauthorized`: Invalid or missing token
 
 ---
 
-### 5. Create User
+### User Management Endpoints
 
-Create a new admin user (admin-only operation).
+> **Note**: All user management endpoints require authentication via the `Authorization` header.
+
+#### 5. Create User
+
+Create a new admin user (admin-only).
 
 **Endpoint**: `POST /admin/users`
+
+**Headers**:
+```
+Authorization: Bearer <token>
+```
 
 **Request Body**:
 ```json
 {
   "name": "Jane Smith",
   "email": "jane@example.com",
-  "password": "password123",
-  "role": "moderator"
+  "password": "optional_password",
+  "role": "admin"
 }
 ```
 
-**Validation**:
-- `name`: Required string
-- `email`: Valid email, automatically lowercased and trimmed
-- `password`: Optional string, minimum 8 characters (auto-generated if not provided)
-- `role`: Optional string (defaults to "admin")
+**Validation Rules**:
+- `name`: Required, string
+- `email`: Required, valid email format
+- `password`: Optional, minimum 8 characters if provided
+- `role`: Optional, string (defaults to 'admin')
 
-**Response** (200):
+**Response** (200 OK):
+
+*With password provided*:
 ```json
 {
-  "id": "cm4dj9x3m0001abc",
+  "id": "clx9876543210fedcba",
   "name": "Jane Smith",
   "email": "jane@example.com",
-  "role": "moderator"
+  "role": "admin"
 }
 ```
 
-**Response with auto-generated password**:
+*Without password (auto-generated)*:
 ```json
 {
-  "id": "cm4dj9x3m0001abc",
+  "id": "clx9876543210fedcba",
   "name": "Jane Smith",
   "email": "jane@example.com",
-  "role": "moderator",
-  "generatedPassword": "x7k9m2p4q1"
+  "role": "admin",
+  "generatedPassword": "xy7k2m9p4q"
 }
 ```
 
 **Error Responses**:
+- `401 Unauthorized`: Invalid or missing token
 - `409 Conflict`: Email already in use
 
 ---
 
-### 6. Update User Password
+#### 6. Update User Password
 
-Set a new password for a specific user (admin-only operation).
+Set a new password for a specific user (admin-only).
 
 **Endpoint**: `PUT /admin/users/:id/password`
 
+**Headers**:
+```
+Authorization: Bearer <token>
+```
+
 **URL Parameters**:
-- `id`: User ID
+- `id`: User ID (CUID)
 
 **Request Body**:
 ```json
@@ -275,31 +301,38 @@ Set a new password for a specific user (admin-only operation).
 }
 ```
 
-**Validation**:
-- `password`: Required string, minimum 8 characters
+**Validation Rules**:
+- `password`: Required, minimum 8 characters
 
-**Response** (200):
+**Response** (200 OK):
 ```json
 {
-  "id": "cm4dj9x3m0001abc",
+  "id": "clx9876543210fedcba",
   "name": "Jane Smith",
   "email": "jane@example.com",
-  "role": "moderator"
+  "role": "admin"
 }
 ```
 
-**Note**: All existing sessions for this user will be invalidated.
+**Side Effects**:
+- All active sessions for this user are invalidated
 
 **Error Responses**:
+- `401 Unauthorized`: Invalid or missing token
 - `404 Not Found`: User not found
 
 ---
 
-### 7. Reset Password by Email
+#### 7. Reset Password by Email
 
-Reset a user's password and generate a new one (admin-only operation).
+Generate and set a new random password for a user (admin-only).
 
 **Endpoint**: `POST /admin/users/reset-password`
+
+**Headers**:
+```
+Authorization: Bearer <token>
+```
 
 **Request Body**:
 ```json
@@ -308,198 +341,232 @@ Reset a user's password and generate a new one (admin-only operation).
 }
 ```
 
-**Validation**:
-- `email`: Valid email, automatically lowercased and trimmed
+**Validation Rules**:
+- `email`: Required, valid email format
 
-**Response** (200):
+**Response** (200 OK):
 ```json
 {
-  "id": "cm4dj9x3m0001abc",
+  "id": "clx9876543210fedcba",
   "name": "Jane Smith",
   "email": "jane@example.com",
-  "role": "moderator",
-  "newPassword": "y8n3q5r7t2"
+  "role": "admin",
+  "newPassword": "xy7k2m9p4q"
 }
 ```
 
-**Note**: All existing sessions for this user will be invalidated.
+**Side Effects**:
+- All active sessions for this user are invalidated
+- A new random password is generated (10 characters)
 
 **Error Responses**:
+- `401 Unauthorized`: Invalid or missing token
 - `404 Not Found`: User not found
 
 ---
 
-### 8. Delete User
+#### 8. Delete User
 
-Delete a user account (admin-only operation).
+Delete a user account (admin-only).
 
 **Endpoint**: `DELETE /admin/users/:id`
 
-**URL Parameters**:
-- `id`: User ID
+**Headers**:
+```
+Authorization: Bearer <token>
+```
 
-**Response** (200):
+**URL Parameters**:
+- `id`: User ID (CUID)
+
+**Response** (200 OK):
 ```json
 {
-  "id": "cm4dj9x3m0001abc",
+  "id": "clx9876543210fedcba",
   "name": "Jane Smith",
   "email": "jane@example.com",
-  "role": "moderator"
+  "role": "admin"
 }
 ```
 
-**Note**: All sessions for this user will be automatically deleted (CASCADE).
+**Side Effects**:
+- All sessions for this user are automatically deleted (CASCADE)
 
 **Error Responses**:
+- `401 Unauthorized`: Invalid or missing token
 - `404 Not Found`: User not found
 
 ---
 
-### 9. Assign Role
+#### 9. Assign Role
 
-Assign or update a user's role (admin-only operation).
+Update a user's role (admin-only).
 
 **Endpoint**: `POST /admin/users/:id/role`
 
+**Headers**:
+```
+Authorization: Bearer <token>
+```
+
 **URL Parameters**:
-- `id`: User ID
+- `id`: User ID (CUID)
 
 **Request Body**:
 ```json
 {
-  "role": "super-admin"
+  "role": "superadmin"
 }
 ```
 
-**Validation**:
-- `role`: Required string
+**Validation Rules**:
+- `role`: Required, string
 
-**Response** (200):
+**Response** (200 OK):
 ```json
 {
-  "id": "cm4dj9x3m0001abc",
+  "id": "clx9876543210fedcba",
   "name": "Jane Smith",
   "email": "jane@example.com",
-  "role": "super-admin"
+  "role": "superadmin"
 }
 ```
 
 **Error Responses**:
+- `401 Unauthorized`: Invalid or missing token
 - `404 Not Found`: User not found
 
 ---
 
-## Database Schema
+## Authentication Flow
 
-### Admin Table
+1. **Signup/Login**: User provides credentials and receives a session token
+2. **Token Storage**: Client stores the token (e.g., localStorage, cookies)
+3. **Authenticated Requests**: Client includes token in `Authorization` header:
+   ```
+   Authorization: Bearer <token>
+   ```
+4. **Token Validation**: Server validates token against active sessions in database
+5. **Logout**: Token is deleted from database, invalidating the session
 
-| Field | Type | Description |
-|-------|------|-------------|
-| id | String (CUID) | Primary key, auto-generated |
-| name | String | Admin's full name |
-| email | String (Unique) | Email address (lowercase) |
-| passwordHash | String | Hashed password (scrypt) |
-| salt | String | Password salt |
-| role | String (Nullable) | User role (default: "admin") |
-| createdAt | DateTime | Account creation timestamp |
-| updatedAt | DateTime | Last update timestamp |
+### Token Format
 
-### Session Table
+- Tokens are 64-character hexadecimal strings
+- Generated using `crypto.randomBytes(32)`
+- Stored directly in the database (no JWT)
 
-| Field | Type | Description |
-|-------|------|-------------|
-| id | String | Primary key (the token itself) |
-| adminId | String | Foreign key to Admin |
-| createdAt | DateTime | Session creation timestamp |
-| expiresAt | DateTime (Nullable) | Optional expiration time |
+### Password Security
 
-**Relationships**:
-- One Admin can have many Sessions
-- Deleting an Admin cascades to delete all their Sessions
-
----
+- Passwords are hashed using `crypto.scrypt`
+- Each password has a unique 32-character hex salt
+- Timing-safe comparison prevents timing attacks
 
 ## Error Handling
 
 All endpoints return appropriate HTTP status codes:
 
-- `200 OK`: Successful request
-- `401 Unauthorized`: Missing or invalid authentication
-- `404 Not Found`: Resource not found
-- `409 Conflict`: Duplicate resource (e.g., email already exists)
-- `400 Bad Request`: Validation errors
+| Status Code | Description                          |
+|-------------|--------------------------------------|
+| 200         | Success                              |
+| 400         | Bad Request (validation failed)      |
+| 401         | Unauthorized (invalid/missing token) |
+| 404         | Not Found (resource doesn't exist)   |
+| 409         | Conflict (duplicate email)           |
+| 500         | Internal Server Error                |
 
-**Validation Error Example**:
+Error response format:
 ```json
 {
   "statusCode": 400,
-  "message": [
-    "email must be an email",
-    "password must be longer than or equal to 8 characters"
-  ],
+  "message": "Validation failed",
   "error": "Bad Request"
 }
 ```
 
----
-
-## Security Features
-
-- **Password Hashing**: Uses `scrypt` with random salt
-- **Timing-Safe Comparison**: Prevents timing attacks during password verification
-- **Email Normalization**: All emails stored in lowercase
-- **Session Management**: Token-based authentication with database storage
-- **Validation**: Automatic request validation with `class-validator`
-- **CORS**: Enabled for cross-origin requests
-
----
-
 ## Development
+
+### Available Scripts
+
+```bash
+# Development
+npm run start:dev      # Start with hot-reload
+
+# Production
+npm run build          # Build for production
+npm run start:prod     # Run production build
+
+# Database
+npx prisma studio      # Open Prisma Studio (DB GUI)
+npx prisma generate    # Regenerate Prisma Client
+npx prisma db push     # Push schema changes to DB
+
+# Code Quality
+npm run format         # Format code with Prettier
+npm run lint           # Lint code with ESLint
+npm test               # Run tests
+```
 
 ### Project Structure
 
 ```
 src/
 ├── admin/
-│   ├── dto/                 # Data Transfer Objects
-│   ├── admin.controller.ts  # API endpoints
-│   ├── admin.service.ts     # Business logic
-│   └── admin.module.ts      # Module configuration
+│   ├── dto/                    # Data Transfer Objects
+│   │   ├── signup-admin.dto.ts
+│   │   ├── login-admin.dto.ts
+│   │   ├── create-admin.dto.ts
+│   │   ├── update-password.dto.ts
+│   │   ├── reset-password.dto.ts
+│   │   └── assign-role.dto.ts
+│   ├── admin.controller.ts     # API endpoints
+│   ├── admin.service.ts        # Business logic
+│   ├── admin.module.ts         # Module definition
+│   └── auth.guard.ts           # Authentication guard
 ├── prisma/
-│   ├── prisma.service.ts    # Prisma client wrapper
-│   └── prisma.module.ts     # Prisma module
-├── app.module.ts            # Root module
-└── main.ts                  # Application entry point
+│   ├── prisma.service.ts       # Prisma client service
+│   └── prisma.module.ts        # Prisma module
+├── app.module.ts               # Root module
+└── main.ts                     # Application entry point
 
 prisma/
-├── schema.prisma            # Database schema
-└── migrations/              # Migration history
+└── schema.prisma               # Database schema
 ```
 
-### Available Scripts
+## Database Management
+
+### View Database with Prisma Studio
 
 ```bash
-# Development
-npm run start:dev
-
-# Build
-npm run build
-
-# Production
-npm run start:prod
-
-# Linting
-npm run lint
-
-# Formatting
-npm run format
-
-# Testing
-npm run test
+npx prisma studio
 ```
 
----
+This opens a web interface at `http://localhost:5555` where you can view and edit database records.
+
+### Reset Database
+
+```bash
+npx prisma db push --force-reset
+```
+
+**Warning**: This will delete all data!
+
+## Security Considerations
+
+- ✅ Passwords are hashed with scrypt and unique salts
+- ✅ Timing-safe password comparison prevents timing attacks
+- ✅ Email addresses are normalized (lowercase, trimmed)
+- ✅ Input validation on all endpoints
+- ✅ Session-based authentication with database storage
+- ⚠️ **Production**: Add rate limiting for login attempts
+- ⚠️ **Production**: Implement session expiration
+- ⚠️ **Production**: Use HTTPS only
+- ⚠️ **Production**: Add CSRF protection
+- ⚠️ **Production**: Implement proper logging and monitoring
 
 ## License
 
-UNLICENSED
+UNLICENSED - Private project
+
+## Support
+
+For issues or questions, please contact the development team.
