@@ -14,13 +14,31 @@ model Admin {
   salt         String
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-  sessions     Session[]
+  sessions     AdminSession[]
 }
 
-model Session {
+model AdminSession {
   id        String    @id
   adminId   String
   createdAt DateTime  @default(now())
   expiresAt DateTime?
   admin     Admin     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  salt         String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     UserSession[]
+}
+
+model UserSession {
+  id        String    @id
+  userId    String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

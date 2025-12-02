@@ -49,7 +49,7 @@ export class AdminService {
         }
 
         const token = crypto.randomBytes(32).toString('hex');
-        await this.prisma.session.create({
+        await this.prisma.adminSession.create({
             data: {
                 id: token,
                 adminId: admin.id,
@@ -61,7 +61,7 @@ export class AdminService {
 
     async logout(token: string) {
         if (!token) throw new UnauthorizedException();
-        const session = await this.prisma.session.delete({
+        const session = await this.prisma.adminSession.delete({
             where: { id: token }
         }).catch(() => null);
 
