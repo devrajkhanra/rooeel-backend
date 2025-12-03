@@ -10,14 +10,15 @@ export class AdminService {
         return crypto.scryptSync(password, salt, 64).toString('hex');
     }
 
-    private sanitize(admin: { id: string; email: string; createdAt: Date; updatedAt: Date }) {
+    private sanitize(admin: { id: string; name: string; email: string; createdAt: Date; updatedAt: Date }) {
         return {
             id: admin.id,
+            name: admin.name,
             email: admin.email,
         };
     }
 
-    async signup(payload: { email: string; password: string }) {
+    async signup(payload: { name: string; email: string; password: string }) {
         const exists = await this.prisma.admin.findUnique({
             where: { email: payload.email.toLowerCase() }
         });
@@ -28,6 +29,7 @@ export class AdminService {
 
         const admin = await this.prisma.admin.create({
             data: {
+                name: payload.name,
                 email: payload.email.toLowerCase(),
                 salt,
                 passwordHash,

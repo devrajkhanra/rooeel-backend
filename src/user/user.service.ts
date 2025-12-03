@@ -10,9 +10,10 @@ export class UserService {
         return crypto.scryptSync(password, salt, 64).toString('hex');
     }
 
-    private sanitize(user: { id: string; email: string; createdAt: Date; updatedAt: Date }) {
+    private sanitize(user: { id: string; name: string; email: string; createdAt: Date; updatedAt: Date }) {
         return {
             id: user.id,
+            name: user.name,
             email: user.email,
         };
     }
