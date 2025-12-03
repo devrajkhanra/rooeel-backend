@@ -4,7 +4,11 @@ import { Transform } from 'class-transformer';
 export class SignupAdminDto {
     @IsString()
     @MinLength(2)
-    name: string;
+    firstName: string;
+
+    @IsString()
+    @MinLength(2)
+    lastName: string;
 
     @IsEmail()
     @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
