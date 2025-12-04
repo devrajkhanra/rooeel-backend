@@ -1,4 +1,5 @@
-import { Controller, Post, Body, Headers, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, Headers, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { UserAuthGuard } from './guards/user-auth.guard';
 import { UserService } from './user.service';
 import { LoginUserDto } from './dto/login-user.dto';
 
@@ -12,20 +13,9 @@ export class UserController {
     }
 
     @Post('logout')
-    async logout(@Headers('authorization') auth?: string) {
-        const token = this.extractToken(auth);
-        if (!token) {
-            throw new UnauthorizedException('Authorization token is required');
-        }
+    @UseGuards(UserAuthGuard)
+    async logout(@Headers('authorization') auth: string) {
+        const token = auth.split(' ')[1];
         return this.userService.logout(token);
-    }
-
-    private extractToken(authorization?: string) {
-        if (!authorization) return undefined;
-        const parts = authorization.split(' ');
-        if (parts.length === 2 && (parts[0] === 'Bearer' || parts[0] === 'bearer')) {
-            return parts[1];
-        }
-        return authorization;
     }
 }
