@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UserService {
@@ -17,6 +18,39 @@ export class UserService {
             lastName: user.lastName,
             email: user.email,
         };
+    }
+
+    async create(adminId: string, createUserDto: CreateUserDto) {
+        const existing = await this.prisma.user.findUnique({
+            where: { email: createUserDto.email.toLowerCase() }
+        });
+
+        if (existing) {
+            throw new BadRequestException('User with this email already exists');
+        }
+
+        const salt = crypto.randomBytes(16).toString('hex');
+        const passwordHash = this.hashPassword(createUserDto.password, salt);
+
+        const user = await this.prisma.user.create({
+            data: {
+                firstName: createUserDto.firstName,
+                lastName: createUserDto.lastName,
+                email: createUserDto.email.toLowerCase(),
+                passwordHash,
+                salt,
+                createdByAdminId: adminId,
+            }
+        });
+
+        return this.sanitize(user);
+    }
+
+    async findAllByAdmin(adminId: string) {
+        const users = await this.prisma.user.findMany({
+            where: { createdByAdminId: adminId }
+        });
+        return users.map(user => this.sanitize(user));
     }
 
     async login(payload: { email: string; password: string }) {

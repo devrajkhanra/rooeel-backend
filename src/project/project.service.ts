@@ -60,4 +60,68 @@ export class ProjectService {
             where: { id },
         });
     }
+
+    async assignUser(id: string, userId: string, adminId: string) {
+        const project = await this.prisma.project.findFirst({
+            where: { id, adminId }
+        });
+
+        if (!project) {
+            throw new Error('Project not found or access denied');
+        }
+
+        return this.prisma.project.update({
+            where: { id },
+            data: {
+                assignedUsers: {
+                    connect: { id: userId }
+                }
+            },
+            include: { assignedUsers: true }
+        });
+    }
+
+    async unassignUser(id: string, userId: string, adminId: string) {
+        const project = await this.prisma.project.findFirst({
+            where: { id, adminId }
+        });
+
+        if (!project) {
+            throw new Error('Project not found or access denied');
+        }
+
+        return this.prisma.project.update({
+            where: { id },
+            data: {
+                assignedUsers: {
+                    disconnect: { id: userId }
+                }
+            },
+            include: { assignedUsers: true }
+        });
+    }
+
+    async getAssignedUsers(id: string, adminId: string) {
+        const project = await this.prisma.project.findFirst({
+            where: { id, adminId },
+            include: {
+                assignedUsers: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        createdAt: true,
+                        updatedAt: true,
+                    }
+                }
+            }
+        });
+
+        if (!project) {
+            throw new Error('Project not found or access denied');
+        }
+
+        return project.assignedUsers;
+    }
 }

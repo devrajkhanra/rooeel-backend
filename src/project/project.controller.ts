@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { ProjectService } from './project.service';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { AssignProjectDto } from './dto/assign-project.dto';
 import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
 import { CurrentAdmin } from '../admin/decorators/current-admin.decorator';
 
@@ -32,5 +33,20 @@ export class ProjectController {
     @Delete(':id')
     remove(@Param('id') id: string, @CurrentAdmin() admin: any) {
         return this.projectService.remove(id, admin.id);
+    }
+
+    @Post(':id/assign')
+    assign(@Param('id') id: string, @CurrentAdmin() admin: any, @Body() body: AssignProjectDto) {
+        return this.projectService.assignUser(id, body.userId, admin.id);
+    }
+
+    @Post(':id/unassign')
+    unassign(@Param('id') id: string, @CurrentAdmin() admin: any, @Body() body: AssignProjectDto) {
+        return this.projectService.unassignUser(id, body.userId, admin.id);
+    }
+
+    @Get(':id/users')
+    getAssignedUsers(@Param('id') id: string, @CurrentAdmin() admin: any) {
+        return this.projectService.getAssignedUsers(id, admin.id);
     }
 }

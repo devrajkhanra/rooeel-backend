@@ -18,6 +18,7 @@ model Admin {
   updatedAt    DateTime  @updatedAt
   sessions     AdminSession[]
   projects     Project[]
+  createdUsers User[]        @relation("AdminCreatedUsers")
 }
 
 model AdminSession {
@@ -35,19 +36,31 @@ model User {
   email        String    @unique
   passwordHash String
   salt         String
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  sessions     UserSession[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  sessions         UserSession[]
+  createdByAdminId String
+  createdByAdmin   Admin     @relation("AdminCreatedUsers", fields: [createdByAdminId], references: [id])
+  assignedProjects Project[] @relation("ProjectAssignments")
 }
 
 model Project {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  adminId     String
-  admin       Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  workOrderNumber  String
+  date             String
+  awardedBy        String
+  awarderAddress   String
+  engineerInCharge String
+  status           String
+  startDate        String
+  endDate          String
+  adminId          String
+  admin            Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  assignedUsers    User[]   @relation("ProjectAssignments")
 }
 
 model UserSession {

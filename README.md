@@ -125,6 +125,43 @@ Authorization: Bearer <token>
 ```
 
 ---
+ 
+ ### User Management
+ 
+ > **Note**: These endpoints are protected by `AdminAuthGuard`. You must provide a valid Admin token in the `Authorization` header.
+ 
+ #### 1. Create User
+ 
+ Create a new user account.
+ 
+ **Endpoint**: `POST /user`
+ 
+ **Request Body**:
+ ```json
+ {
+   "firstName": "Jane",
+   "lastName": "Doe",
+   "email": "jane.doe@example.com",
+   "password": "userpassword123"
+ }
+ ```
+ 
+ **Validation Rules**:
+ - `firstName`: Required, string.
+ - `lastName`: Required, string.
+ - `email`: Required, valid email format.
+ - `password`: Required, string, min length 8.
+ 
+ #### 2. Get All Users
+ 
+ Retrieve all users created by the authenticated admin.
+ 
+ **Endpoint**: `GET /user`
+ 
+ **Response**:
+ Returns a list of users created by the admin.
+ 
+ ---
 
 ### User Authentication
 
@@ -167,13 +204,29 @@ Authorization: Bearer <token>
 ```json
 {
   "name": "New Project",
-  "description": "Optional description of the project"
+  "description": "Optional description of the project",
+  "workOrderNumber": "WO-12345",
+  "date": "27-10-2023",
+  "status": "In Progress",
+  "startDate": "01-11-2023",
+  "endDate": "30-11-2023",
+  "awardedBy": "Government Body",
+  "awarderAddress": "123 Main St, City",
+  "engineerInCharge": "Jane Doe"
 }
 ```
 
 **Validation Rules**:
 - `name`: Required, string, non-empty.
 - `description`: Optional, string.
+- `workOrderNumber`: Required, string, non-empty.
+- `date`: Required, string, format `dd-MM-YYYY`.
+- `awardedBy`: Required, string, non-empty.
+- `awarderAddress`: Required, string, non-empty.
+- `engineerInCharge`: Required, string, non-empty.
+- `status`: Required, string, non-empty.
+- `startDate`: Required, string, format `dd-MM-YYYY`.
+- `endDate`: Required, string, format `dd-MM-YYYY`.
 
 #### 2. Get All Projects
 
@@ -197,7 +250,8 @@ Update an existing project.
 ```json
 {
   "name": "Updated Project Name",
-  "description": "Updated description"
+  "description": "Updated description",
+  "engineerInCharge": "New Engineer"
 }
 ```
 
@@ -206,6 +260,43 @@ Update an existing project.
 Delete a project.
 
 **Endpoint**: `DELETE /project/:id`
+
+---
+
+#### 6. Assign Project to User
+
+Assign a user to a project.
+
+**Endpoint**: `POST /project/:id/assign`
+
+**Request Body**:
+```json
+{
+  "userId": "user-uuid"
+}
+```
+
+#### 7. Unassign Project from User
+
+Unassign a user from a project.
+
+**Endpoint**: `POST /project/:id/unassign`
+
+**Request Body**:
+```json
+{
+  "userId": "user-uuid"
+}
+```
+
+#### 8. Get Assigned Users
+
+Get all users assigned to a project.
+
+**Endpoint**: `GET /project/:id/users`
+
+**Response**:
+Returns a list of users assigned to the project.
 
 ---
 
