@@ -161,6 +161,20 @@ Authorization: Bearer <token>
  **Response**:
  Returns a list of users created by the admin.
  
+ 
+ #### 3. Disable/Enable User
+ 
+ Update the active status of a user.
+ 
+ **Endpoint**: `PATCH /user/:id/status`
+ 
+ **Request Body**:
+ ```json
+ {
+   "isActive": false
+ }
+ ```
+ 
  ---
 
 ### User Authentication
@@ -296,7 +310,37 @@ Get all users assigned to a project.
 **Endpoint**: `GET /project/:id/users`
 
 **Response**:
-Returns a list of users assigned to the project.
+Returns a list of users assigned to the project, including their roles.
+
+```json
+[
+  {
+    "id": "user-uuid",
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john@example.com",
+    "role": "Engineer",
+    "assignedAt": "2023-10-27T10:00:00.000Z"
+  }
+]
+```
+
+#### 9. Assign Role to User
+
+Assign a specific role to a user in a project.
+
+**Endpoint**: `POST /project/:id/role`
+
+**Request Body**:
+```json
+{
+  "userId": "user-uuid",
+  "role": "Engineer"
+}
+```
+
+**Response**:
+Returns the updated assignment object.
 
 ---
 

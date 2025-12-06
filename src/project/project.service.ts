@@ -70,15 +70,25 @@ export class ProjectService {
             throw new Error('Project not found or access denied');
         }
 
-        return this.prisma.project.update({
-            where: { id },
-            data: {
-                assignedUsers: {
-                    connect: { id: userId }
+        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        if (!user || user.isActive === false) {
+            throw new Error('User is inactive or not found');
+        }
+
+        try {
+            return await this.prisma.projectAssignment.create({
+                data: {
+                    projectId: id,
+                    userId: userId,
                 }
-            },
-            include: { assignedUsers: true }
-        });
+            });
+        } catch (error) {
+            const existing = await this.prisma.projectAssignment.findUnique({
+                where: { projectId_userId: { projectId: id, userId } }
+            });
+            if (existing) return existing;
+            throw error;
+        }
     }
 
     async unassignUser(id: string, userId: string, adminId: string) {
@@ -90,22 +100,29 @@ export class ProjectService {
             throw new Error('Project not found or access denied');
         }
 
-        return this.prisma.project.update({
-            where: { id },
-            data: {
-                assignedUsers: {
-                    disconnect: { id: userId }
+        return this.prisma.projectAssignment.delete({
+            where: {
+                projectId_userId: {
+                    projectId: id,
+                    userId: userId
                 }
-            },
-            include: { assignedUsers: true }
+            }
         });
     }
 
     async getAssignedUsers(id: string, adminId: string) {
         const project = await this.prisma.project.findFirst({
             where: { id, adminId },
+        });
+
+        if (!project) {
+            throw new Error('Project not found or access denied');
+        }
+
+        const assignments = await this.prisma.projectAssignment.findMany({
+            where: { projectId: id },
             include: {
-                assignedUsers: {
+                user: {
                     select: {
                         id: true,
                         firstName: true,
@@ -118,10 +135,30 @@ export class ProjectService {
             }
         });
 
+        return assignments.map(a => ({
+            ...a.user,
+            role: a.role,
+            assignedAt: a.assignedAt
+        }));
+    }
+
+    async assignRole(id: string, userId: string, role: string, adminId: string) {
+        const project = await this.prisma.project.findFirst({
+            where: { id, adminId }
+        });
+
         if (!project) {
             throw new Error('Project not found or access denied');
         }
 
-        return project.assignedUsers;
+        return this.prisma.projectAssignment.update({
+            where: {
+                projectId_userId: {
+                    projectId: id,
+                    userId: userId
+                }
+            },
+            data: { role }
+        });
     }
 }

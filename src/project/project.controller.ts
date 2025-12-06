@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@n
 import { ProjectService } from './project.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { AssignProjectDto } from './dto/assign-project.dto';
+import { AssignRoleDto } from './dto/assign-role.dto';
 import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
 import { CurrentAdmin } from '../admin/decorators/current-admin.decorator';
 
@@ -48,5 +49,11 @@ export class ProjectController {
     @Get(':id/users')
     getAssignedUsers(@Param('id') id: string, @CurrentAdmin() admin: any) {
         return this.projectService.getAssignedUsers(id, admin.id);
+    }
+
+    @Post(':id/role')
+    @UseGuards(AdminAuthGuard)
+    assignRole(@Param('id') id: string, @CurrentAdmin() admin: any, @Body() body: AssignRoleDto) {
+        return this.projectService.assignRole(id, body.userId, body.role, admin.id);
     }
 }

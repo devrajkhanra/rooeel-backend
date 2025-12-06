@@ -11,13 +11,31 @@ export class UserService {
         return crypto.scryptSync(password, salt, 64).toString('hex');
     }
 
-    private sanitize(user: { id: string; firstName: string; lastName: string; email: string; createdAt: Date; updatedAt: Date }) {
+    private sanitize(user: { id: string; firstName: string; lastName: string; email: string; isActive?: boolean; createdAt: Date; updatedAt: Date }) {
         return {
             id: user.id,
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
+            isActive: user.isActive ?? true,
         };
+    }
+
+    async updateStatus(userId: string, adminId: string, isActive: boolean) {
+        const user = await this.prisma.user.findFirst({
+            where: { id: userId, createdByAdminId: adminId }
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found or access denied');
+        }
+
+        const updatedUser = await this.prisma.user.update({
+            where: { id: userId },
+            data: { isActive }
+        });
+
+        return this.sanitize(updatedUser);
     }
 
     async create(adminId: string, createUserDto: CreateUserDto) {

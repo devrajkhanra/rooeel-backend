@@ -1,4 +1,5 @@
-import { Controller, Post, Body, Headers, UnauthorizedException, UseGuards, Get } from '@nestjs/common';
+import { Controller, Post, Body, Headers, UnauthorizedException, UseGuards, Get, Patch, Param } from '@nestjs/common';
+import { UpdateUserStatusDto } from './dto/update-user-status.dto';
 import { UserAuthGuard } from './guards/user-auth.guard';
 import { AdminAuthGuard } from '../admin/guards/admin-auth.guard';
 import { CurrentAdmin } from '../admin/decorators/current-admin.decorator';
@@ -20,6 +21,16 @@ export class UserController {
     @UseGuards(AdminAuthGuard)
     async findAll(@CurrentAdmin() admin: any) {
         return this.userService.findAllByAdmin(admin.id);
+    }
+
+    @Patch(':id/status')
+    @UseGuards(AdminAuthGuard)
+    async updateStatus(
+        @Param('id') id: string,
+        @CurrentAdmin() admin: any,
+        @Body() body: UpdateUserStatusDto
+    ) {
+        return this.userService.updateStatus(id, admin.id, body.isActive);
     }
 
     @Post('login')
