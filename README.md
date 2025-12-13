@@ -50,9 +50,10 @@ npm run build
 ## Modules
 
 - **AuthModule**: Authentication module with JWT-based authentication
-  - Register and login endpoints
+  - Register, login, and logout endpoints
   - Password hashing with bcrypt
   - JWT token generation and validation
+  - Token blacklist for logout functionality
 
 - **UserModule**: User management module
   - Protected user endpoints requiring authentication
@@ -72,6 +73,10 @@ npm run build
 - `POST /auth/login` - Login with email and password
   - Body: `{ "email": "user@example.com", "password": "password123" }`
   - Returns: `{ "accessToken": "jwt-token", "user": { ... } }`
+
+- `POST /auth/logout` - Logout and invalidate the current JWT token (Protected)
+  - Headers: `Authorization: Bearer <token>`
+  - Returns: `{ "message": "Logged out successfully" }`
 
 ### User (Protected - Requires JWT Token)
 
