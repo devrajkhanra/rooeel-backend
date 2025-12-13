@@ -13,7 +13,7 @@ npm install
 Create a `.env` file in the root directory (see `.env.example` for reference):
 
 ```bash
-DATABASE_URL="postgresql://user:password@localhost:5432/rooeel?schema=public"
+DATABASE_URL="postgresql://user:password@localhost:5432/rooeel_db?schema=public"
 JWT_SECRET="your-secret-key-change-in-production"
 JWT_EXPIRATION="7d"
 ```
