@@ -15,7 +15,7 @@ export class AuthService {
   async register(registerDto: RegisterDto) {
     const { email, password, name } = registerDto;
 
-    const existingUser = await this.prisma.client.user.findUnique({
+    const existingUser = await this.prisma.user.findUnique({
       where: { email },
     });
 
@@ -25,7 +25,7 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await this.prisma.client.user.create({
+    const user = await this.prisma.user.create({
       data: {
         email,
         password: hashedPassword,
@@ -40,7 +40,7 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
-    const user = await this.prisma.client.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { email },
     });
 
@@ -68,7 +68,7 @@ export class AuthService {
   }
 
   async validateUser(userId: number) {
-    const user = await this.prisma.client.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
 
@@ -89,7 +89,7 @@ export class AuthService {
 
     const expiresAt = new Date(decoded.exp * 1000);
 
-    await this.prisma.client.tokenBlacklist.create({
+    await this.prisma.tokenBlacklist.create({
       data: {
         token,
         expiresAt,
@@ -100,7 +100,7 @@ export class AuthService {
   }
 
   async isTokenBlacklisted(token: string): Promise<boolean> {
-    const blacklistedToken = await this.prisma.client.tokenBlacklist.findUnique({
+    const blacklistedToken = await this.prisma.tokenBlacklist.findUnique({
       where: { token },
     });
 
