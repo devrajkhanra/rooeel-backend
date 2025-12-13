@@ -79,4 +79,31 @@ export class AuthService {
     const { password: _, ...result } = user;
     return result;
   }
+
+  async logout(token: string) {
+    const decoded = this.jwtService.decode(token) as any;
+    
+    if (!decoded || !decoded.exp) {
+      throw new UnauthorizedException('Invalid token');
+    }
+
+    const expiresAt = new Date(decoded.exp * 1000);
+
+    await this.prisma.client.tokenBlacklist.create({
+      data: {
+        token,
+        expiresAt,
+      },
+    });
+
+    return { message: 'Logged out successfully' };
+  }
+
+  async isTokenBlacklisted(token: string): Promise<boolean> {
+    const blacklistedToken = await this.prisma.client.tokenBlacklist.findUnique({
+      where: { token },
+    });
+
+    return !!blacklistedToken;
+  }
 }
