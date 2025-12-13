@@ -57,7 +57,10 @@ npm run build
 
 - **UserModule**: User management module
   - Protected user endpoints requiring authentication
-  
+
+- **ProjectModule**: Project management module
+  - Protected CRUD endpoints for projects
+
 - **AdminModule**: Admin functionality module
   - Controller: `/admin` endpoint
   - Service: AdminService with basic functionality
@@ -87,6 +90,25 @@ npm run build
   - Headers: `Authorization: Bearer <token>`
   
 - `GET /user/:id` - Get user by ID
+  - Headers: `Authorization: Bearer <token>`
+
+### Project (Protected - Requires JWT Token)
+
+- `POST /project` - Create a project
+  - Headers: `Authorization: Bearer <token>`
+  - Body: `{ "name": "My Project", "description": "Optional" }`
+
+- `GET /project` - List your projects
+  - Headers: `Authorization: Bearer <token>`
+
+- `GET /project/:id` - Get a project by ID (must be owner)
+  - Headers: `Authorization: Bearer <token>`
+
+- `PATCH /project/:id` - Update a project (must be owner)
+  - Headers: `Authorization: Bearer <token>`
+  - Body: `{ "name": "New Name", "description": "Optional" }`
+
+- `DELETE /project/:id` - Delete a project (must be owner)
   - Headers: `Authorization: Bearer <token>`
 
 ### Admin
