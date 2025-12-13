@@ -6,7 +6,7 @@ export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getUsers() {
-    const users = await this.prisma.client.user.findMany({
+    const users = await this.prisma.user.findMany({
       select: {
         id: true,
         email: true,
@@ -19,7 +19,7 @@ export class UserService {
   }
 
   async getUserById(id: number) {
-    const user = await this.prisma.client.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
         id: true,

@@ -8,7 +8,7 @@ export class ProjectService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createProject(ownerId: number, createProjectDto: CreateProjectDto) {
-    const project = await this.prisma.client.project.create({
+    const project = await this.prisma.project.create({
       data: {
         name: createProjectDto.name,
         description: createProjectDto.description,
@@ -28,7 +28,7 @@ export class ProjectService {
   }
 
   async getProjects(ownerId: number) {
-    const projects = await this.prisma.client.project.findMany({
+    const projects = await this.prisma.project.findMany({
       where: { ownerId },
       orderBy: { createdAt: 'desc' },
       select: {
@@ -45,7 +45,7 @@ export class ProjectService {
   }
 
   async getProjectById(ownerId: number, id: number) {
-    const project = await this.prisma.client.project.findUnique({
+    const project = await this.prisma.project.findUnique({
       where: { id },
       select: {
         id: true,
@@ -69,7 +69,7 @@ export class ProjectService {
   }
 
   async updateProject(ownerId: number, id: number, updateProjectDto: UpdateProjectDto) {
-    const project = await this.prisma.client.project.findUnique({
+    const project = await this.prisma.project.findUnique({
       where: { id },
       select: { id: true, ownerId: true },
     });
@@ -82,7 +82,7 @@ export class ProjectService {
       throw new ForbiddenException('You do not have access to this project');
     }
 
-    const updatedProject = await this.prisma.client.project.update({
+    const updatedProject = await this.prisma.project.update({
       where: { id },
       data: {
         name: updateProjectDto.name,
@@ -102,7 +102,7 @@ export class ProjectService {
   }
 
   async deleteProject(ownerId: number, id: number) {
-    const project = await this.prisma.client.project.findUnique({
+    const project = await this.prisma.project.findUnique({
       where: { id },
       select: { id: true, ownerId: true },
     });
@@ -115,7 +115,7 @@ export class ProjectService {
       throw new ForbiddenException('You do not have access to this project');
     }
 
-    await this.prisma.client.project.delete({
+    await this.prisma.project.delete({
       where: { id },
     });
 
