@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AdminService } from '../admin/services/admin.service';
 import { PasswordService } from '../admin/services/password.service';
@@ -7,6 +7,8 @@ import { SignupDto } from './dto/signup.dto';
 
 @Injectable()
 export class AuthService {
+    private readonly logger = new Logger(AuthService.name);
+
     constructor(
         private adminService: AdminService,
         private jwtService: JwtService,
@@ -53,6 +55,17 @@ export class AuthService {
         const payload = { email: admin.email, sub: admin.id };
         return {
             access_token: this.jwtService.sign(payload),
+        };
+    }
+
+    async logout(user: any) {
+        // Log the logout event
+        this.logger.log(`Admin ${user.email} (ID: ${user.userId}) logged out`);
+
+        // In a stateless JWT system, logout is handled client-side by removing the token
+        // This endpoint can be used for logging purposes or future token blacklisting
+        return {
+            message: 'Logout successful',
         };
     }
 }

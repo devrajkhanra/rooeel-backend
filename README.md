@@ -65,6 +65,7 @@ Manage user authentication and sessions.
 | :--- | :--- | :--- | :--- | :--- |
 | `POST` | `/auth/signup` | Admin signup | `{ "firstName": "...", "lastName": "...", "email": "...", "password": "..." }` | `{ "access_token": "...", "admin": { ... } }` |
 | `POST` | `/auth/login` | Admin login | `{ "email": "...", "password": "..." }` | `{ "access_token": "..." }` |
+| `POST` | `/auth/logout` | Admin logout (requires JWT token) | - | `{ "message": "Logout successful" }` |
 
 ### Admin Module
 Manage administrator accounts.
