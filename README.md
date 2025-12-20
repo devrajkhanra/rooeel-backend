@@ -70,11 +70,13 @@ Manage user authentication and sessions.
 ### Admin Module
 Manage administrator accounts.
 
+> [!IMPORTANT]
+> Admins can only be created through the `/auth/signup` endpoint. Direct admin creation via `/admin` is not available for security reasons.
+
 | Method | Endpoint | Description | Request Body |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/admin` | Retrieve all admins | - |
 | `GET` | `/admin/:id` | Retrieve an admin by ID | - |
-| `POST` | `/admin` | Create a new admin | `{ "firstName": "...", "lastName": "...", "email": "...", "password": "..." }` |
 | `PATCH` | `/admin/:id` | Update an existing admin | Partial Admin Object |
 | `DELETE` | `/admin/:id` | Delete an admin | - |
 
