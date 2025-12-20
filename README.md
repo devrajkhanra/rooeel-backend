@@ -58,6 +58,13 @@ $ npm run start:prod
 | :--- | :--- | :--- |
 | `GET` | `/` | Health check. Returns "Hello World!". |
 
+### Authentication
+Manage user authentication and sessions.
+
+| Method | Endpoint | Description | Request Body | Response |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/auth/login` | Admin login | `{ "email": "...", "password": "..." }` | `{ "access_token": "..." }` |
+
 ### Admin Module
 Manage administrator accounts.
 
