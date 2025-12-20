@@ -63,6 +63,7 @@ Manage user authentication and sessions.
 
 | Method | Endpoint | Description | Request Body | Response |
 | :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/auth/signup` | Admin signup | `{ "firstName": "...", "lastName": "...", "email": "...", "password": "..." }` | `{ "access_token": "...", "admin": { ... } }` |
 | `POST` | `/auth/login` | Admin login | `{ "email": "...", "password": "..." }` | `{ "access_token": "..." }` |
 
 ### Admin Module
