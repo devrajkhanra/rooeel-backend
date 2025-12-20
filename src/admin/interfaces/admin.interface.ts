@@ -8,6 +8,7 @@ export interface IAdminService {
     findOne(id: number): Promise<Admin | null>;
     update(id: number, updateAdminDto: UpdateAdminDto): Promise<Admin>;
     remove(id: number): Promise<void>;
+    findByEmail(email: string): Promise<Admin | null>;
 }
 
 export interface IPasswordService {

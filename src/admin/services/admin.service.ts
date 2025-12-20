@@ -62,5 +62,11 @@ export class AdminService implements IAdminService {
         }
         await this.prisma.admin.delete({ where: { id } });
     }
+
+    async findByEmail(email: string): Promise<Admin | null> {
+        return this.prisma.admin.findUnique({
+            where: { email },
+        });
+    }
 }
 
