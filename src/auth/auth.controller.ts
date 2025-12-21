@@ -25,4 +25,22 @@ export class AuthController {
     async logout(@Request() req) {
         return this.authService.logout(req.user);
     }
+
+    @Post('user/signup')
+    async userSignup(@Body() signupDto: SignupDto) {
+        return this.authService.signupUser(signupDto);
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Post('user/login')
+    async userLogin(@Body() loginDto: LoginDto) {
+        return this.authService.loginUser(loginDto);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @HttpCode(HttpStatus.OK)
+    @Post('user/logout')
+    async userLogout(@Request() req) {
+        return this.authService.logoutUser(req.user);
+    }
 }

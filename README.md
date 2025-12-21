@@ -59,13 +59,21 @@ $ npm run start:prod
 | `GET` | `/` | Health check. Returns "Hello World!". |
 
 ### Authentication
-Manage user authentication and sessions.
+Manage authentication and sessions for both admins and users.
 
+#### Admin Authentication
 | Method | Endpoint | Description | Request Body | Response |
 | :--- | :--- | :--- | :--- | :--- |
 | `POST` | `/auth/signup` | Admin signup | `{ "firstName": "...", "lastName": "...", "email": "...", "password": "..." }` | `{ "access_token": "...", "admin": { ... } }` |
 | `POST` | `/auth/login` | Admin login | `{ "email": "...", "password": "..." }` | `{ "access_token": "..." }` |
 | `POST` | `/auth/logout` | Admin logout (requires JWT token) | - | `{ "message": "Logout successful" }` |
+
+#### User Authentication
+| Method | Endpoint | Description | Request Body | Response |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/auth/user/signup` | User signup | `{ "firstName": "...", "lastName": "...", "email": "...", "password": "..." }` | `{ "access_token": "...", "user": { ... } }` |
+| `POST` | `/auth/user/login` | User login | `{ "email": "...", "password": "..." }` | `{ "access_token": "..." }` |
+| `POST` | `/auth/user/logout` | User logout (requires JWT token) | - | `{ "message": "Logout successful" }` |
 
 ### Admin Module
 Manage administrator accounts.
