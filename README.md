@@ -31,11 +31,11 @@ DATABASE_URL="postgresql://johndoe:randompassword@localhost:5432/mydb?schema=pub
 Initialize your database schema using Prisma:
 
 ```bash
-# Generate Prisma Client
-$ npx prisma generate
+# Generate Prisma Client and run migrations
+$ npx prisma migrate dev --name init
 
-# Push schema to database
-$ npx prisma db push
+# Or if migrations already exist
+$ npx prisma migrate deploy
 ```
 
 ## Running the app
@@ -64,16 +64,27 @@ Manage authentication and sessions for both admins and users.
 #### Admin Authentication
 | Method | Endpoint | Description | Request Body | Response |
 | :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/signup` | Admin signup | `{ "firstName": "...", "lastName": "...", "email": "...", "password": "..." }` | `{ "access_token": "...", "admin": { ... } }` |
-| `POST` | `/auth/login` | Admin login | `{ "email": "...", "password": "..." }` | `{ "access_token": "..." }` |
+| `POST` | `/auth/signup` | Admin signup | `{ "firstName": "string", "lastName": "string", "email": "string", "password": "string" }` | `{ "access_token": "string", "admin": { "id": number, "firstName": "string", "lastName": "string", "email": "string" } }` |
+| `POST` | `/auth/login` | Admin login | `{ "email": "string", "password": "string" }` | `{ "access_token": "string" }` |
 | `POST` | `/auth/logout` | Admin logout (requires JWT token) | - | `{ "message": "Logout successful" }` |
+
+**Validation Rules:**
+- `firstName`: Required, minimum 3 characters
+- `lastName`: Required, minimum 3 characters
+- `email`: Required, must be valid email format
+- `password`: Required, minimum 6 characters
 
 #### User Authentication
 | Method | Endpoint | Description | Request Body | Response |
 | :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/user/signup` | User signup | `{ "firstName": "...", "lastName": "...", "email": "...", "password": "..." }` | `{ "access_token": "...", "user": { ... } }` |
-| `POST` | `/auth/user/login` | User login | `{ "email": "...", "password": "..." }` | `{ "access_token": "..." }` |
+| `POST` | `/auth/user/signup` | User signup | `{ "firstName": "string", "lastName": "string", "email": "string", "password": "string" }` | `{ "access_token": "string", "user": { "id": number, "firstName": "string", "lastName": "string", "email": "string" } }` |
+| `POST` | `/auth/user/login` | User login | `{ "email": "string", "password": "string" }` | `{ "access_token": "string" }` |
 | `POST` | `/auth/user/logout` | User logout (requires JWT token) | - | `{ "message": "Logout successful" }` |
+
+**Validation Rules:**
+- Same as Admin Authentication
+
+---
 
 ### Admin Module
 Manage administrator accounts.
@@ -81,21 +92,92 @@ Manage administrator accounts.
 > [!IMPORTANT]
 > Admins can only be created through the `/auth/signup` endpoint. Direct admin creation via `/admin` is not available for security reasons.
 
-| Method | Endpoint | Description | Request Body |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/admin` | Retrieve all admins | - |
-| `GET` | `/admin/:id` | Retrieve an admin by ID | - |
-| `PATCH` | `/admin/:id` | Update an existing admin | Partial Admin Object |
-| `DELETE` | `/admin/:id` | Delete an admin | - |
+| Method | Endpoint | Description | Request Body | Response |
+| :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/admin` | Retrieve all admins | - | Array of Admin objects |
+| `GET` | `/admin/:id` | Retrieve an admin by ID | - | Admin object |
+| `PATCH` | `/admin/:id` | Update an existing admin | `{ "firstName"?: "string", "lastName"?: "string", "email"?: "string", "password"?: "string" }` | Updated Admin object |
+| `DELETE` | `/admin/:id` | Delete an admin | - | Deleted Admin object |
 
-#### Data Models
-**Admin**
-- `id`: Int (Auto-increment)
-- `firstName`: String
-- `lastName`: String
-- `email`: String (Unique)
-- `password`: String
-- `createdAt`: DateTime (Default: now)
+**Validation Rules (Update):**
+- All fields are optional
+- `firstName`: Minimum 3 characters (if provided)
+- `lastName`: Minimum 3 characters (if provided)
+- `email`: Must be valid email format (if provided)
+- `password`: Minimum 6 characters (if provided)
+
+---
+
+### User Module
+Manage user accounts.
+
+| Method | Endpoint | Description | Request Body | Response |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/user` | Create a new user | `{ "firstName": "string", "lastName": "string", "email": "string", "password": "string" }` | Created User object |
+| `GET` | `/user` | Retrieve all users | - | Array of User objects |
+| `GET` | `/user/:id` | Retrieve a user by ID | - | User object |
+| `PATCH` | `/user/:id` | Update an existing user | `{ "firstName"?: "string", "lastName"?: "string", "email"?: "string", "password"?: "string" }` | Updated User object |
+| `DELETE` | `/user/:id` | Delete a user | - | Deleted User object |
+
+**Validation Rules (Create):**
+- `firstName`: Required, minimum 3 characters
+- `lastName`: Required, minimum 3 characters
+- `email`: Required, must be valid email format
+- `password`: Required, minimum 6 characters
+
+**Validation Rules (Update):**
+- All fields are optional
+- `firstName`: Minimum 3 characters (if provided)
+- `lastName`: Minimum 3 characters (if provided)
+- `email`: Must be valid email format (if provided)
+- `password`: Minimum 6 characters (if provided)
+
+---
+
+### Data Models
+
+#### Admin
+```typescript
+{
+  id: number;           // Auto-increment
+  firstName: string;
+  lastName: string;
+  email: string;        // Unique
+  password: string;     // Hashed
+  createdAt: Date;      // Default: now()
+}
+```
+
+#### User
+```typescript
+{
+  id: number;           // Auto-increment
+  firstName: string;
+  lastName: string;
+  email: string;        // Unique
+  password: string;     // Hashed
+  createdAt: Date;      // Default: now()
+}
+```
+
+---
+
+### Authentication
+
+All protected endpoints require a JWT token in the Authorization header:
+
+```
+Authorization: Bearer <access_token>
+```
+
+The JWT payload contains:
+```typescript
+{
+  email: string;
+  sub: number;          // User/Admin ID
+  role: 'admin' | 'user';
+}
+```
 
 ## Test
 
