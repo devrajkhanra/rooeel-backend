@@ -113,9 +113,12 @@ Manage administrator accounts.
 ### User Module
 Manage user accounts.
 
+> [!IMPORTANT]
+> The `POST /user` endpoint requires **admin authentication**. Include a valid admin JWT token in the Authorization header.
+
 | Method | Endpoint | Description | Request Body | Response |
 | :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/user` | Create a new user | `{ "firstName": "string", "lastName": "string", "email": "string", "password": "string" }` | Created User object |
+| `POST` | `/user` | Create a new user (requires admin auth) | `{ "firstName": "string", "lastName": "string", "email": "string", "password": "string" }` | Created User object |
 | `GET` | `/user` | Retrieve all users | - | Array of User objects |
 | `GET` | `/user/:id` | Retrieve a user by ID | - | User object |
 | `PATCH` | `/user/:id` | Update an existing user | `{ "firstName"?: "string", "lastName"?: "string", "email"?: "string", "password"?: "string" }` | Updated User object |
