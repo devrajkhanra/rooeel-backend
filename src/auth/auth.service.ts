@@ -42,29 +42,6 @@ export class AuthService {
         };
     }
 
-    async signupUser(signupDto: SignupDto) {
-        // Check if user already exists
-        const existingUser = await this.userService.findByEmail(signupDto.email);
-        if (existingUser) {
-            throw new ConflictException('User with this email already exists');
-        }
-
-        // Create the user
-        const user = await this.userService.create(signupDto);
-
-        // Generate JWT token and return
-        const payload = { email: user.email, sub: user.id, role: 'user' };
-        return {
-            access_token: this.jwtService.sign(payload),
-            user: {
-                id: user.id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-            },
-        };
-    }
-
     async validateAdmin(email: string, pass: string): Promise<any> {
         const admin = await this.adminService.findByEmail(email);
         if (admin && await this.adminPasswordService.compare(pass, admin.password)) {

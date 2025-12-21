@@ -1,19 +1,3 @@
 // create-admin.dto.ts
-import { IsEmail, IsNotEmpty, MinLength } from 'class-validator'
-
-export class CreateAdminDto {
-    @IsNotEmpty()
-    @MinLength(3)
-    firstName: string;
-
-    @IsNotEmpty()
-    @MinLength(3)
-    lastName: string;
-
-    @IsEmail()
-    email: string;
-
-    @IsNotEmpty()
-    @MinLength(6)
-    password: string;
-}
+// Re-export SignupDto to avoid duplication while maintaining module boundaries
+export { SignupDto as CreateAdminDto } from '../../auth/dto/signup.dto';

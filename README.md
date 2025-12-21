@@ -62,6 +62,8 @@ $ npm run start:prod
 Manage authentication and sessions for both admins and users.
 
 #### Admin Authentication
+Admins can self-register and authenticate.
+
 | Method | Endpoint | Description | Request Body | Response |
 | :--- | :--- | :--- | :--- | :--- |
 | `POST` | `/auth/signup` | Admin signup | `{ "firstName": "string", "lastName": "string", "email": "string", "password": "string" }` | `{ "access_token": "string", "admin": { "id": number, "firstName": "string", "lastName": "string", "email": "string" } }` |
@@ -75,14 +77,14 @@ Manage authentication and sessions for both admins and users.
 - `password`: Required, minimum 6 characters
 
 #### User Authentication
+
+> [!IMPORTANT]
+> Users **cannot self-register**. They must be created by an admin using the `POST /user` endpoint. Once created, users can login and logout.
+
 | Method | Endpoint | Description | Request Body | Response |
 | :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/user/signup` | User signup | `{ "firstName": "string", "lastName": "string", "email": "string", "password": "string" }` | `{ "access_token": "string", "user": { "id": number, "firstName": "string", "lastName": "string", "email": "string" } }` |
 | `POST` | `/auth/user/login` | User login | `{ "email": "string", "password": "string" }` | `{ "access_token": "string" }` |
 | `POST` | `/auth/user/logout` | User logout (requires JWT token) | - | `{ "message": "Logout successful" }` |
-
-**Validation Rules:**
-- Same as Admin Authentication
 
 ---
 

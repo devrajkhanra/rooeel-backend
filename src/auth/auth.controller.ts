@@ -26,11 +26,6 @@ export class AuthController {
         return this.authService.logout(req.user);
     }
 
-    @Post('user/signup')
-    async userSignup(@Body() signupDto: SignupDto) {
-        return this.authService.signupUser(signupDto);
-    }
-
     @HttpCode(HttpStatus.OK)
     @Post('user/login')
     async userLogin(@Body() loginDto: LoginDto) {
