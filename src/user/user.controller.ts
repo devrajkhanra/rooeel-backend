@@ -2,13 +2,13 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGua
 import { UserService } from './services/user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { AdminRoleGuard } from '../auth/admin-role.guard';
+import { AdminGuard } from '../auth/admin.guard';
 
 @Controller('user')
 export class UserController {
     constructor(private readonly userService: UserService) { }
 
-    @UseGuards(AdminRoleGuard)
+    @UseGuards(AdminGuard)
     @Post()
     create(@Body() createUserDto: CreateUserDto) {
         return this.userService.create(createUserDto);
