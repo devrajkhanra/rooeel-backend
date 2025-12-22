@@ -184,6 +184,54 @@ The JWT payload contains:
 }
 ```
 
+---
+
+### Authentication Guards
+
+The application uses role-based guards to protect endpoints:
+
+#### AdminGuard
+Protects endpoints that should only be accessible by authenticated admins.
+
+**Usage:**
+```typescript
+@UseGuards(AdminGuard)
+@Post()
+create(@Body() createUserDto: CreateUserDto) {
+  return this.userService.create(createUserDto);
+}
+```
+
+**Behavior:**
+- Extends `JwtAuthGuard` to verify JWT token
+- Checks that `user.role === 'admin'`
+- Throws `ForbiddenException` if user is not an admin
+
+#### UserGuard
+Protects endpoints that should only be accessible by authenticated users.
+
+**Usage:**
+```typescript
+@UseGuards(UserGuard)
+@Get('profile')
+getProfile(@Request() req) {
+  return req.user;
+}
+```
+
+**Behavior:**
+- Extends `JwtAuthGuard` to verify JWT token
+- Checks that `user.role === 'user'`
+- Throws `ForbiddenException` if user is not a regular user
+
+#### JwtAuthGuard
+Base guard for JWT authentication without role checking. Use this when you need to authenticate any user (admin or regular user) without role restrictions.
+
+**Current Protected Endpoints:**
+- `POST /user` - Protected by `AdminGuard` (only admins can create users)
+
+---
+
 ## Test
 
 ```bash
