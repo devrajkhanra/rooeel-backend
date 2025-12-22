@@ -202,8 +202,22 @@ create(@Body() createUserDto: CreateUserDto) {
 }
 ```
 
+**Implementation:**
+```typescript
+async canActivate(context: ExecutionContext): Promise<boolean> {
+  const isAuthenticated = await super.canActivate(context);
+  if (!isAuthenticated) return false;
+  
+  const user = context.switchToHttp().getRequest().user;
+  if (!user || user.role !== 'admin') {
+    throw new ForbiddenException('Only admins can perform this action');
+  }
+  return true;
+}
+```
+
 **Behavior:**
-- Extends `JwtAuthGuard` to verify JWT token
+- Extends `JwtAuthGuard` to verify JWT token asynchronously
 - Checks that `user.role === 'admin'`
 - Throws `ForbiddenException` if user is not an admin
 
@@ -219,8 +233,22 @@ getProfile(@Request() req) {
 }
 ```
 
+**Implementation:**
+```typescript
+async canActivate(context: ExecutionContext): Promise<boolean> {
+  const isAuthenticated = await super.canActivate(context);
+  if (!isAuthenticated) return false;
+  
+  const user = context.switchToHttp().getRequest().user;
+  if (!user || user.role !== 'user') {
+    throw new ForbiddenException('Only users can perform this action');
+  }
+  return true;
+}
+```
+
 **Behavior:**
-- Extends `JwtAuthGuard` to verify JWT token
+- Extends `JwtAuthGuard` to verify JWT token asynchronously
 - Checks that `user.role === 'user'`
 - Throws `ForbiddenException` if user is not a regular user
 
