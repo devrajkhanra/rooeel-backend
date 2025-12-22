@@ -51,6 +51,43 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## Logging
+
+The application uses a custom logger with colored console output and timestamps for better visibility.
+
+### Log Levels
+
+Configure the log level via the `LOG_LEVEL` environment variable in `.env`:
+
+```env
+LOG_LEVEL=debug  # Options: error, warn, log, debug, verbose
+ENABLE_HTTP_LOGGING=true  # Enable/disable HTTP request/response logging
+```
+
+**Log Levels:**
+- `error`: Critical errors requiring immediate attention
+- `warn`: Warning messages for potential issues
+- `log`: General informational messages (default)
+- `debug`: Detailed debugging information
+- `verbose`: Very detailed trace information
+
+### Log Format
+
+```
+[2025-12-22 11:22:15] [INFO] [AuthService] Admin admin@test.com logged in successfully
+[2025-12-22 11:22:16] [HTTP] POST /user 201 - 45ms
+[2025-12-22 11:22:17] [DEBUG] [UserService] Creating user: testuser@example.com
+```
+
+### HTTP Logging
+
+When `ENABLE_HTTP_LOGGING=true`, all HTTP requests and responses are logged with:
+- Request method, URL, and IP address
+- Response status code (color-coded: green for 2xx, yellow for 4xx, red for 5xx)
+- Request duration in milliseconds
+
+---
+
 ## API Documentation
 
 ### Application

@@ -4,18 +4,25 @@ import { CreateAdminDto } from '../dto/create-admin.dto';
 import { UpdateAdminDto } from '../dto/update-admin.dto';
 import { IAdminService } from '../interfaces/admin.interface';
 import { PasswordService } from './password.service';
+import { CustomLogger } from '../../logger/logger.service';
 import { Admin } from '@prisma/client';
 
 @Injectable()
 export class AdminService implements IAdminService {
+    private readonly logger: CustomLogger;
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly passwordService: PasswordService,
-    ) { }
+    ) {
+        this.logger = new CustomLogger();
+        this.logger.setContext(AdminService.name);
+    }
 
     async create(createAdminDto: CreateAdminDto): Promise<Admin> {
+        this.logger.debug(`Creating admin: ${createAdminDto.email}`);
         const hashedPassword = await this.passwordService.hash(createAdminDto.password);
-        return this.prisma.admin.create({
+        const admin = await this.prisma.admin.create({
             data: {
                 firstName: createAdminDto.firstName,
                 lastName: createAdminDto.lastName,
@@ -23,6 +30,8 @@ export class AdminService implements IAdminService {
                 password: hashedPassword,
             },
         });
+        this.logger.log(`Admin created successfully: ${admin.email} (ID: ${admin.id})`);
+        return admin;
     }
 
     async findAll(): Promise<Admin[]> {
@@ -44,15 +53,18 @@ export class AdminService implements IAdminService {
             throw new NotFoundException(`Admin with ID ${id} not found`);
         }
 
+        this.logger.debug(`Updating admin: ${admin.email} (ID: ${id})`);
         const data: any = { ...updateAdminDto };
         if (updateAdminDto.password) {
             data.password = await this.passwordService.hash(updateAdminDto.password);
         }
 
-        return this.prisma.admin.update({
+        const updatedAdmin = await this.prisma.admin.update({
             where: { id },
             data,
         });
+        this.logger.log(`Admin updated successfully: ${updatedAdmin.email} (ID: ${id})`);
+        return updatedAdmin;
     }
 
     async remove(id: number): Promise<void> {
@@ -60,7 +72,9 @@ export class AdminService implements IAdminService {
         if (!admin) {
             throw new NotFoundException(`Admin with ID ${id} not found`);
         }
+        this.logger.warn(`Deleting admin: ${admin.email} (ID: ${id})`);
         await this.prisma.admin.delete({ where: { id } });
+        this.logger.log(`Admin deleted successfully: ${admin.email} (ID: ${id})`);
     }
 
     async findByEmail(email: string): Promise<Admin | null> {

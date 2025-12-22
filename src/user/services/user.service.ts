@@ -4,14 +4,20 @@ import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { IUserService } from '../interfaces/user.interface';
 import { PasswordService } from './password.service';
+import { CustomLogger } from '../../logger/logger.service';
 import { User } from '@prisma/client';
 
 @Injectable()
 export class UserService implements IUserService {
+    private readonly logger: CustomLogger;
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly passwordService: PasswordService,
-    ) { }
+    ) {
+        this.logger = new CustomLogger();
+        this.logger.setContext(UserService.name);
+    }
 
     async create(createUserDto: CreateUserDto): Promise<User> {
         // Check if user already exists
@@ -20,8 +26,9 @@ export class UserService implements IUserService {
             throw new ConflictException('User with this email already exists');
         }
 
+        this.logger.debug(`Creating user: ${createUserDto.email}`);
         const hashedPassword = await this.passwordService.hash(createUserDto.password);
-        return this.prisma.user.create({
+        const user = await this.prisma.user.create({
             data: {
                 firstName: createUserDto.firstName,
                 lastName: createUserDto.lastName,
@@ -29,6 +36,8 @@ export class UserService implements IUserService {
                 password: hashedPassword,
             },
         });
+        this.logger.log(`User created successfully: ${user.email} (ID: ${user.id})`);
+        return user;
     }
 
     async findAll(): Promise<User[]> {
@@ -50,15 +59,18 @@ export class UserService implements IUserService {
             throw new NotFoundException(`User with ID ${id} not found`);
         }
 
+        this.logger.debug(`Updating user: ${user.email} (ID: ${id})`);
         const data: any = { ...updateUserDto };
         if (updateUserDto.password) {
             data.password = await this.passwordService.hash(updateUserDto.password);
         }
 
-        return this.prisma.user.update({
+        const updatedUser = await this.prisma.user.update({
             where: { id },
             data,
         });
+        this.logger.log(`User updated successfully: ${updatedUser.email} (ID: ${id})`);
+        return updatedUser;
     }
 
     async remove(id: number): Promise<void> {
@@ -66,7 +78,9 @@ export class UserService implements IUserService {
         if (!user) {
             throw new NotFoundException(`User with ID ${id} not found`);
         }
+        this.logger.warn(`Deleting user: ${user.email} (ID: ${id})`);
         await this.prisma.user.delete({ where: { id } });
+        this.logger.log(`User deleted successfully: ${user.email} (ID: ${id})`);
     }
 
     async findByEmail(email: string): Promise<User | null> {
