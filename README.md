@@ -175,6 +175,40 @@ Manage user accounts.
 - `email`: Must be valid email format (if provided)
 - `password`: Minimum 6 characters (if provided)
 
+
+---
+
+### Request Module
+Manage user change requests.
+
+> [!IMPORTANT]
+> Users can only create requests for themselves. Admins can only view and manage requests from users they created.
+
+> [!WARNING]
+> Password change requests cannot be approved by admins for security reasons. Users must use a different mechanism to change passwords.
+
+| Method | Endpoint | Description | Request Body | Response |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/request` | Create a change request (requires user auth) | `{ "requestType": "firstName" \| "lastName" \| "email" \| "password", "requestedValue": "string", "currentPassword"?: "string" }` | Created UserRequest object |
+| `GET` | `/request/my-requests` | Get current user's requests (requires user auth) | - | Array of UserRequest objects |
+| `GET` | `/request/admin-requests` | Get requests from admin's users (requires admin auth) | - | Array of UserRequest objects |
+| `GET` | `/request/:id` | Get a specific request by ID | - | UserRequest object |
+| `PATCH` | `/request/:id/approve` | Approve a request (requires admin auth) | - | Updated UserRequest object |
+| `PATCH` | `/request/:id/reject` | Reject a request (requires admin auth) | - | Updated UserRequest object |
+
+**Validation Rules (Create):**
+- `requestType`: Required, must be one of 'firstName', 'lastName', 'email', 'password'
+- `requestedValue`: Required, minimum 1 character
+- `currentPassword`: Required only for password change requests, minimum 6 characters
+
+**Request Workflow:**
+1. User creates a change request via `POST /request`
+2. Request is automatically assigned to the admin who created the user
+3. Admin views pending requests via `GET /request/admin-requests`
+4. Admin approves or rejects the request via `PATCH /request/:id/approve` or `PATCH /request/:id/reject`
+5. If approved (and not a password request), the user's profile is automatically updated
+6. User can view their request history via `GET /request/my-requests`
+
 ---
 
 ### Data Models
@@ -199,7 +233,23 @@ Manage user accounts.
   lastName: string;
   email: string;        // Unique
   password: string;     // Hashed
+  createdBy: number;    // Foreign key to Admin (nullable)
   createdAt: Date;      // Default: now()
+}
+```
+
+#### UserRequest
+```typescript
+{
+  id: number;           // Auto-increment
+  userId: number;       // Foreign key to User
+  adminId: number;      // Foreign key to Admin
+  requestType: string;  // 'firstName', 'lastName', 'email', 'password'
+  currentValue: string; // Current value (null for password)
+  requestedValue: string; // Requested value ('[HIDDEN]' for password)
+  status: string;       // 'pending', 'approved', 'rejected'
+  createdAt: Date;      // Default: now()
+  updatedAt: Date;      // Auto-updated
 }
 ```
 

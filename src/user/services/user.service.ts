@@ -19,14 +19,14 @@ export class UserService implements IUserService {
         this.logger.setContext(UserService.name);
     }
 
-    async create(createUserDto: CreateUserDto): Promise<User> {
+    async create(createUserDto: CreateUserDto, adminId: number): Promise<User> {
         // Check if user already exists
         const existingUser = await this.findByEmail(createUserDto.email);
         if (existingUser) {
             throw new ConflictException('User with this email already exists');
         }
 
-        this.logger.debug(`Creating user: ${createUserDto.email}`);
+        this.logger.debug(`Creating user: ${createUserDto.email} by admin ID: ${adminId}`);
         const hashedPassword = await this.passwordService.hash(createUserDto.password);
         const user = await this.prisma.user.create({
             data: {
@@ -34,9 +34,10 @@ export class UserService implements IUserService {
                 lastName: createUserDto.lastName,
                 email: createUserDto.email,
                 password: hashedPassword,
+                createdBy: adminId,
             },
         });
-        this.logger.log(`User created successfully: ${user.email} (ID: ${user.id})`);
+        this.logger.log(`User created successfully: ${user.email} (ID: ${user.id}) by admin ID: ${adminId}`);
         return user;
     }
 

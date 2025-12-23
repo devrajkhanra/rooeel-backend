@@ -4,7 +4,7 @@ import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 
 export interface IUserService {
-    create(createUserDto: CreateUserDto): Promise<User>;
+    create(createUserDto: CreateUserDto, adminId: number): Promise<User>;
     findAll(): Promise<User[]>;
     findOne(id: number): Promise<User | null>;
     update(id: number, updateUserDto: UpdateUserDto): Promise<User>;
