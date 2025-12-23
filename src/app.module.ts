@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { LoggerModule } from './logger/logger.module';
 import { RequestModule } from './request/request.module';
+import { ProjectModule } from './project/project.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { RequestModule } from './request/request.module';
     UserModule,
     LoggerModule,
     RequestModule,
+    ProjectModule,
   ],
   controllers: [AppController],
   providers: [AppService],

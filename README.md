@@ -231,6 +231,50 @@ Manage user change requests.
 
 ---
 
+### Project Module
+Manage projects with admin ownership and user assignments.
+
+> [!IMPORTANT]
+> Projects are created and owned by **admins**. Users can be assigned to projects and can view projects they're assigned to.
+
+| Method | Endpoint | Description | Request Body | Response |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/project` | Create a project (requires admin auth) | `{ "name": "string", "description"?: "string", "status"?: "active" \| "inactive" \| "completed" }` | Created Project object |
+| `GET` | `/project` | Get all projects (filtered by role) | - | Array of Project objects |
+| `GET` | `/project/:id` | Get a project by ID | - | Project object with relations |
+| `PATCH` | `/project/:id` | Update a project (requires admin auth) | `{ "name"?: "string", "description"?: "string", "status"?: "active" \| "inactive" \| "completed" }` | Updated Project object |
+| `DELETE` | `/project/:id` | Delete a project (requires admin auth) | - | Success message |
+| `POST` | `/project/:id/assign-user` | Assign a user to project (requires admin auth) | `{ "userId": number }` | Success message |
+| `DELETE` | `/project/:id/remove-user/:userId` | Remove user from project (requires admin auth) | - | Success message |
+
+**Validation Rules (Create):**
+- `name`: Required, minimum 3 characters
+- `description`: Optional, minimum 10 characters
+- `status`: Optional, must be 'active', 'inactive', or 'completed' (default: 'active')
+
+**Validation Rules (Update):**
+- All fields are optional
+- Same validation rules as create when provided
+
+**Validation Rules (Assign User):**
+- `userId`: Required, must be a positive integer
+
+**Project Workflow:**
+1. Admin creates a project via `POST /project`
+2. Admin assigns users to the project via `POST /project/:id/assign-user`
+3. Users can view their assigned projects via `GET /project`
+4. Admins can view all their projects via `GET /project`
+5. Admins can update or delete their own projects
+6. Admins can remove users from their projects via `DELETE /project/:id/remove-user/:userId`
+
+**Authorization:**
+- Only admins can create, update, and delete projects
+- Admins can only manage their own projects
+- Users can only view projects they're assigned to
+- Both admins and users can view project details
+
+---
+
 ### Data Models
 
 #### Admin
@@ -270,6 +314,29 @@ Manage user change requests.
   status: string;       // 'pending', 'approved', 'rejected'
   createdAt: Date;      // Default: now()
   updatedAt: Date;      // Auto-updated
+}
+```
+
+#### Project
+```typescript
+{
+  id: number;           // Auto-increment
+  name: string;
+  description: string;  // Optional
+  status: string;       // 'active', 'inactive', 'completed' (default: 'active')
+  createdBy: number;    // Foreign key to Admin
+  createdAt: Date;      // Default: now()
+  updatedAt: Date;      // Auto-updated
+}
+```
+
+#### ProjectUser
+```typescript
+{
+  id: number;           // Auto-increment
+  projectId: number;    // Foreign key to Project
+  userId: number;       // Foreign key to User
+  assignedAt: Date;     // Default: now()
 }
 ```
 

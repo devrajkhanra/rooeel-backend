@@ -16,6 +16,7 @@ model Admin {
   createdAt DateTime      @default(now())
   users     User[]        // One admin can create many users
   requests  UserRequest[] // One admin can receive many requests
+  projects  Project[]     // One admin can create many projects
 }
 
 model User {
@@ -28,6 +29,7 @@ model User {
   createdBy Int?          // Foreign key to Admin (nullable for existing users)
   admin     Admin?        @relation(fields: [createdBy], references: [id])
   requests  UserRequest[] // One user can make many requests
+  projects  ProjectUser[] // Many-to-many relation with projects
 }
 
 model UserRequest {
@@ -46,4 +48,32 @@ model UserRequest {
   @@index([userId])
   @@index([adminId])
   @@index([status])
+}
+
+model Project {
+  id          Int           @id @default(autoincrement())
+  name        String
+  description String?
+  status      String        @default("active") // 'active', 'inactive', 'completed'
+  createdBy   Int           // Foreign key to Admin
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  admin       Admin         @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  users       ProjectUser[] // Many-to-many relation with users
+
+  @@index([createdBy])
+  @@index([status])
+}
+
+model ProjectUser {
+  id         Int      @id @default(autoincrement())
+  projectId  Int
+  userId     Int
+  assignedAt DateTime @default(now())
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId]) // Prevent duplicate assignments
+  @@index([projectId])
+  @@index([userId])
 }
