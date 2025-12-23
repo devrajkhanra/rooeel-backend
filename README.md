@@ -39,6 +39,26 @@ $ npx prisma migrate dev --name init
 $ npx prisma migrate deploy
 ```
 
+## Troubleshooting
+
+### User-Admin Assignment Issue
+
+If users encounter the error **"User does not have an assigned admin"** when trying to create change requests, it means their `createdBy` field is `null` in the database.
+
+**Solution:** Run the database fix script to assign all users without an admin to the first available admin:
+
+```bash
+$ npx ts-node src/scripts/fix-user-admin.ts
+```
+
+**What the script does:**
+- Identifies all users with `createdBy = null`
+- Finds the first admin in the database
+- Assigns all affected users to that admin
+- Provides detailed logging of the operation
+
+**Note:** New users created via `POST /user` will automatically have the `createdBy` field set correctly, so this issue only affects existing users created before the field was properly implemented.
+
 ## Running the app
 
 ```bash
@@ -267,8 +287,29 @@ The JWT payload contains:
 ```typescript
 {
   email: string;
-  sub: number;          // User/Admin ID
+  sub: number;          // User/Admin ID (in token)
   role: 'admin' | 'user';
+}
+```
+
+**Note:** When accessing the authenticated user in controllers via `req.user`, the payload is transformed to:
+```typescript
+{
+  userId: number;       // Extracted from payload.sub
+  email: string;
+  role: 'admin' | 'user';
+}
+```
+
+**Example usage in controllers:**
+```typescript
+@UseGuards(UserGuard)
+@Post()
+create(@Request() req, @Body() createDto: CreateDto) {
+  const userId = req.user.userId;  // Access user ID
+  const email = req.user.email;    // Access email
+  const role = req.user.role;      // Access role
+  // ...
 }
 ```
 
