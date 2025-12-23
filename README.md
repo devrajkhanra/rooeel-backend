@@ -24,6 +24,7 @@ $ npm install
 
 ```env
 DATABASE_URL="postgresql://johndoe:randompassword@localhost:5432/mydb?schema=public"
+PORT=5000  # Optional: defaults to 5000 if not specified
 ```
 
 ## Database Setup
