@@ -21,21 +21,21 @@ export class RequestController {
     @UseGuards(UserGuard)
     @Post()
     create(@Request() req, @Body() createRequestDto: CreateRequestDto) {
-        const userId = req.user.sub;
+        const userId = req.user.userId;
         return this.requestService.createRequest(userId, createRequestDto);
     }
 
     @UseGuards(UserGuard)
     @Get('my-requests')
     findMyRequests(@Request() req) {
-        const userId = req.user.sub;
+        const userId = req.user.userId;
         return this.requestService.findAllByUser(userId);
     }
 
     @UseGuards(AdminGuard)
     @Get('admin-requests')
     findAdminRequests(@Request() req) {
-        const adminId = req.user.sub;
+        const adminId = req.user.userId;
         return this.requestService.findAllByAdmin(adminId);
     }
 
@@ -47,14 +47,14 @@ export class RequestController {
     @UseGuards(AdminGuard)
     @Patch(':id/approve')
     approve(@Param('id', ParseIntPipe) id: number, @Request() req) {
-        const adminId = req.user.sub;
+        const adminId = req.user.userId;
         return this.requestService.approveRequest(id, adminId);
     }
 
     @UseGuards(AdminGuard)
     @Patch(':id/reject')
     reject(@Param('id', ParseIntPipe) id: number, @Request() req) {
-        const adminId = req.user.sub;
+        const adminId = req.user.userId;
         return this.requestService.rejectRequest(id, adminId);
     }
 }

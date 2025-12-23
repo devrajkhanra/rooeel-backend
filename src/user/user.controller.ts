@@ -11,7 +11,7 @@ export class UserController {
     @UseGuards(AdminGuard)
     @Post()
     create(@Request() req, @Body() createUserDto: CreateUserDto) {
-        const adminId = req.user.sub;
+        const adminId = req.user.userId;
         return this.userService.create(createUserDto, adminId);
     }
 
