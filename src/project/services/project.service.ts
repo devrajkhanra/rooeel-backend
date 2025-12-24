@@ -165,7 +165,7 @@ export class ProjectService implements IProjectService {
         this.logger.log(`Project deleted successfully: ${project.name} (ID: ${id})`);
     }
 
-    async assignUser(projectId: number, userId: number, adminId: number): Promise<void> {
+    async assignUser(projectId: number, userId: number, adminId: number): Promise<string[]> {
         const project = await this.findOne(projectId);
 
         if (!project) {
@@ -208,9 +208,30 @@ export class ProjectService implements IProjectService {
         });
 
         this.logger.log(`User ${user.email} assigned to project ${project.name} (ID: ${projectId})`);
+
+        // Fetch all assigned users and return their names
+        const assignedUsers = await this.prisma.projectUser.findMany({
+            where: { projectId },
+            include: {
+                user: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                    },
+                },
+            },
+        });
+
+        const userNames = assignedUsers.map(
+            (pu) => `${pu.user.firstName} ${pu.user.lastName}`
+        );
+
+        this.logger.debug(`Returning ${userNames.length} assigned users for project ${projectId}`);
+
+        return userNames;
     }
 
-    async removeUser(projectId: number, userId: number, adminId: number): Promise<void> {
+    async removeUser(projectId: number, userId: number, adminId: number): Promise<string[]> {
         const project = await this.findOne(projectId);
 
         if (!project) {
@@ -222,6 +243,25 @@ export class ProjectService implements IProjectService {
             throw new ForbiddenException('You can only remove users from your own projects');
         }
 
+        // Log current assignments for debugging
+        const currentAssignments = await this.prisma.projectUser.findMany({
+            where: { projectId },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+
+        this.logger.debug(
+            `Current assignments for project ${project.name}: ${currentAssignments.map(a => `${a.user.firstName} ${a.user.lastName} (ID: ${a.userId})`).join(', ') || 'None'}`
+        );
+
         // Find the assignment
         const assignment = await this.prisma.projectUser.findFirst({
             where: {
@@ -231,15 +271,39 @@ export class ProjectService implements IProjectService {
         });
 
         if (!assignment) {
-            throw new BadRequestException('User is not assigned to this project');
+            // Make this operation idempotent - if user is not assigned, just log and continue
+            this.logger.warn(
+                `User ID ${userId} is not assigned to project ${project.name} (ID: ${projectId}). Skipping removal (idempotent operation).`
+            );
+        } else {
+            this.logger.debug(`Removing user ID ${userId} from project ${project.name}`);
+
+            await this.prisma.projectUser.delete({
+                where: { id: assignment.id },
+            });
+
+            this.logger.log(`User ID ${userId} removed from project ${project.name} (ID: ${projectId})`);
         }
 
-        this.logger.debug(`Removing user ID ${userId} from project ${project.name}`);
-
-        await this.prisma.projectUser.delete({
-            where: { id: assignment.id },
+        // Fetch remaining assigned users and return their names
+        const remainingUsers = await this.prisma.projectUser.findMany({
+            where: { projectId },
+            include: {
+                user: {
+                    select: {
+                        firstName: true,
+                        lastName: true,
+                    },
+                },
+            },
         });
 
-        this.logger.log(`User ID ${userId} removed from project ${project.name} (ID: ${projectId})`);
+        const userNames = remainingUsers.map(
+            (pu) => `${pu.user.firstName} ${pu.user.lastName}`
+        );
+
+        this.logger.debug(`Returning ${userNames.length} remaining users for project ${projectId}`);
+
+        return userNames;
     }
 }

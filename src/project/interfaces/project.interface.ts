@@ -27,6 +27,6 @@ export interface IProjectService {
     findOne(id: number): Promise<ProjectWithRelations | null>;
     update(id: number, adminId: number, updateProjectDto: any): Promise<Project>;
     remove(id: number, adminId: number): Promise<void>;
-    assignUser(projectId: number, userId: number, adminId: number): Promise<void>;
-    removeUser(projectId: number, userId: number, adminId: number): Promise<void>;
+    assignUser(projectId: number, userId: number, adminId: number): Promise<string[]>;
+    removeUser(projectId: number, userId: number, adminId: number): Promise<string[]>;
 }

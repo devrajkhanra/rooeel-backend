@@ -62,23 +62,25 @@ export class ProjectController {
 
     @UseGuards(AdminGuard)
     @Post(':id/assign-user')
-    assignUser(
+    async assignUser(
         @Param('id', ParseIntPipe) id: number,
         @Request() req,
         @Body() assignUserDto: AssignUserDto,
     ) {
         const adminId = req.user.userId;
-        return this.projectService.assignUser(id, assignUserDto.userId, adminId);
+        const assignedUsers = await this.projectService.assignUser(id, assignUserDto.userId, adminId);
+        return { assignedUsers };
     }
 
     @UseGuards(AdminGuard)
     @Delete(':id/remove-user/:userId')
-    removeUser(
+    async removeUser(
         @Param('id', ParseIntPipe) id: number,
         @Param('userId', ParseIntPipe) userId: number,
         @Request() req,
     ) {
         const adminId = req.user.userId;
-        return this.projectService.removeUser(id, userId, adminId);
+        const assignedUsers = await this.projectService.removeUser(id, userId, adminId);
+        return { assignedUsers };
     }
 }

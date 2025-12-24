@@ -244,8 +244,8 @@ Manage projects with admin ownership and user assignments.
 | `GET` | `/project/:id` | Get a project by ID | - | Project object with relations |
 | `PATCH` | `/project/:id` | Update a project (requires admin auth) | `{ "name"?: "string", "description"?: "string", "status"?: "active" \| "inactive" \| "completed" }` | Updated Project object |
 | `DELETE` | `/project/:id` | Delete a project (requires admin auth) | - | Success message |
-| `POST` | `/project/:id/assign-user` | Assign a user to project (requires admin auth) | `{ "userId": number }` | Success message |
-| `DELETE` | `/project/:id/remove-user/:userId` | Remove user from project (requires admin auth) | - | Success message |
+| `POST` | `/project/:id/assign-user` | Assign a user to project (requires admin auth) | `{ "userId": number }` | `{ "assignedUsers": string[] }` - Array of assigned user names |
+| `DELETE` | `/project/:id/remove-user/:userId` | Remove user from project (requires admin auth) | - | `{ "assignedUsers": string[] }` - Array of remaining assigned user names |
 
 **Validation Rules (Create):**
 - `name`: Required, minimum 3 characters
@@ -262,10 +262,13 @@ Manage projects with admin ownership and user assignments.
 **Project Workflow:**
 1. Admin creates a project via `POST /project`
 2. Admin assigns users to the project via `POST /project/:id/assign-user`
+   - Response includes all currently assigned user names: `{ "assignedUsers": ["John Doe", "Jane Smith"] }`
 3. Users can view their assigned projects via `GET /project`
 4. Admins can view all their projects via `GET /project`
 5. Admins can update or delete their own projects
 6. Admins can remove users from their projects via `DELETE /project/:id/remove-user/:userId`
+   - Response includes remaining assigned user names: `{ "assignedUsers": ["John Doe"] }`
+   - Operation is idempotent - removing an already-removed user succeeds without error
 
 **Authorization:**
 - Only admins can create, update, and delete projects
