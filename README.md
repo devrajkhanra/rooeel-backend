@@ -4,27 +4,49 @@
 
 # Rooeel Backend
 
-A generic backend service built with [NestJS](https://github.com/nestjs/nest) and [Prisma](https://www.prisma.io/).
+A comprehensive backend service built with [NestJS](https://github.com/nestjs/nest) and [Prisma](https://www.prisma.io/) featuring authentication, user management, change requests, and project management.
+
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Database Setup](#database-setup)
+- [Running the Application](#running-the-application)
+- [Logging](#logging)
+- [Database Schema](#database-schema)
+- [API Documentation](#api-documentation)
+  - [Authentication](#authentication-endpoints)
+  - [Admin Management](#admin-management-endpoints)
+  - [User Management](#user-management-endpoints)
+  - [Request Management](#request-management-endpoints)
+  - [Project Management](#project-management-endpoints)
+- [Authentication & Authorization](#authentication--authorization)
+- [Testing](#testing)
+
+---
 
 ## Prerequisites
 
--   [Node.js](https://nodejs.org/) (v16 or higher)
--   [PostgreSQL](https://www.postgresql.org/)
+- [Node.js](https://nodejs.org/) (v16 or higher)
+- [PostgreSQL](https://www.postgresql.org/)
 
 ## Installation
 
 ```bash
-$ npm install
+npm install
 ```
 
 ## Configuration
 
-1.  Copy the environment file example (if available) or create a new `.env` file in the root directory.
-2.  Add your database connection string:
+Create a `.env` file in the root directory:
 
 ```env
-DATABASE_URL="postgresql://johndoe:randompassword@localhost:5432/mydb?schema=public"
-PORT=5000  # Optional: defaults to 5000 if not specified
+DATABASE_URL="postgresql://username:password@localhost:5432/database_name?schema=public"
+PORT=5000
+LOG_LEVEL=debug
+ENABLE_HTTP_LOGGING=true
+JWT_SECRET=your-secret-key-here
 ```
 
 ## Database Setup
@@ -33,319 +55,1082 @@ Initialize your database schema using Prisma:
 
 ```bash
 # Generate Prisma Client and run migrations
-$ npx prisma migrate dev --name init
+npx prisma migrate dev --name init
 
 # Or if migrations already exist
-$ npx prisma migrate deploy
+npx prisma migrate deploy
+
+# Open Prisma Studio to view/edit data
+npx prisma studio
 ```
 
-## Troubleshooting
+### Troubleshooting: User-Admin Assignment
 
-### User-Admin Assignment Issue
-
-If users encounter the error **"User does not have an assigned admin"** when trying to create change requests, it means their `createdBy` field is `null` in the database.
-
-**Solution:** Run the database fix script to assign all users without an admin to the first available admin:
+If users encounter **"User does not have an assigned admin"** error, run:
 
 ```bash
-$ npx ts-node src/scripts/fix-user-admin.ts
+npx ts-node src/scripts/fix-user-admin.ts
 ```
 
-**What the script does:**
-- Identifies all users with `createdBy = null`
-- Finds the first admin in the database
-- Assigns all affected users to that admin
-- Provides detailed logging of the operation
+This assigns all users with `createdBy = null` to the first available admin.
 
-**Note:** New users created via `POST /user` will automatically have the `createdBy` field set correctly, so this issue only affects existing users created before the field was properly implemented.
-
-## Running the app
+## Running the Application
 
 ```bash
-# development
-$ npm run start
+# Development mode
+npm run start:dev
 
-# watch mode
-$ npm run start:dev
+# Production mode
+npm run start:prod
 
-# production mode
-$ npm run start:prod
+# Build
+npm run build
 ```
+
+The server runs on `http://localhost:5000` by default.
 
 ## Logging
 
-The application uses a custom logger with colored console output and timestamps for better visibility.
+The application uses a custom logger with colored output and timestamps.
 
-### Log Levels
-
-Configure the log level via the `LOG_LEVEL` environment variable in `.env`:
+### Configuration
 
 ```env
 LOG_LEVEL=debug  # Options: error, warn, log, debug, verbose
-ENABLE_HTTP_LOGGING=true  # Enable/disable HTTP request/response logging
+ENABLE_HTTP_LOGGING=true
 ```
-
-**Log Levels:**
-- `error`: Critical errors requiring immediate attention
-- `warn`: Warning messages for potential issues
-- `log`: General informational messages (default)
-- `debug`: Detailed debugging information
-- `verbose`: Very detailed trace information
 
 ### Log Format
 
 ```
-[2025-12-22 11:22:15] [INFO] [AuthService] Admin admin@test.com logged in successfully
-[2025-12-22 11:22:16] [HTTP] POST /user 201 - 45ms
-[2025-12-22 11:22:17] [DEBUG] [UserService] Creating user: testuser@example.com
+[2025-12-24 18:48:45] [INFO] [AuthService] Admin admin@test.com logged in successfully
+[2025-12-24 18:48:46] [HTTP] POST /user 201 - 45ms
+[2025-12-24 18:48:47] [DEBUG] [UserService] Creating user: testuser@example.com
 ```
 
-### HTTP Logging
+---
 
-When `ENABLE_HTTP_LOGGING=true`, all HTTP requests and responses are logged with:
-- Request method, URL, and IP address
-- Response status code (color-coded: green for 2xx, yellow for 4xx, red for 5xx)
-- Request duration in milliseconds
+## Database Schema
+
+### Admin Table
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | Integer | Primary Key, Auto-increment | Unique identifier |
+| `firstName` | String | Required | Admin's first name |
+| `lastName` | String | Required | Admin's last name |
+| `email` | String | Required, Unique | Admin's email address |
+| `password` | String | Required | Hashed password |
+| `createdAt` | DateTime | Default: now() | Account creation timestamp |
+
+**Relations:**
+- One admin can create many users (`users`)
+- One admin can receive many requests (`requests`)
+- One admin can create many projects (`projects`)
+
+### User Table
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | Integer | Primary Key, Auto-increment | Unique identifier |
+| `firstName` | String | Required | User's first name |
+| `lastName` | String | Required | User's last name |
+| `email` | String | Required, Unique | User's email address |
+| `password` | String | Required | Hashed password |
+| `createdBy` | Integer | Foreign Key (Admin), Nullable | ID of admin who created this user |
+| `createdAt` | DateTime | Default: now() | Account creation timestamp |
+
+**Relations:**
+- Belongs to one admin (`admin`)
+- Can make many requests (`requests`)
+- Can be assigned to many projects (`projects` via `ProjectUser`)
+
+### UserRequest Table
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | Integer | Primary Key, Auto-increment | Unique identifier |
+| `userId` | Integer | Foreign Key (User), Indexed | User who made the request |
+| `adminId` | Integer | Foreign Key (Admin), Indexed | Admin who receives the request |
+| `requestType` | String | Required | Type: 'firstName', 'lastName', 'email', 'password' |
+| `currentValue` | String | Nullable | Current value (null for password) |
+| `requestedValue` | String | Nullable | Requested value ('[HIDDEN]' for password) |
+| `status` | String | Default: 'pending', Indexed | Status: 'pending', 'approved', 'rejected' |
+| `createdAt` | DateTime | Default: now() | Request creation timestamp |
+| `updatedAt` | DateTime | Auto-updated | Last update timestamp |
+
+**Relations:**
+- Belongs to one user (`user`) - Cascade delete
+- Belongs to one admin (`admin`) - Cascade delete
+
+### Project Table
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | Integer | Primary Key, Auto-increment | Unique identifier |
+| `name` | String | Required | Project name |
+| `description` | String | Nullable | Project description |
+| `status` | String | Default: 'active', Indexed | Status: 'active', 'inactive', 'completed' |
+| `createdBy` | Integer | Foreign Key (Admin), Indexed | ID of admin who created this project |
+| `createdAt` | DateTime | Default: now() | Project creation timestamp |
+| `updatedAt` | DateTime | Auto-updated | Last update timestamp |
+
+**Relations:**
+- Belongs to one admin (`admin`) - Cascade delete
+- Has many user assignments (`users` via `ProjectUser`)
+
+### ProjectUser Table (Join Table)
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | Integer | Primary Key, Auto-increment | Unique identifier |
+| `projectId` | Integer | Foreign Key (Project), Indexed | Project ID |
+| `userId` | Integer | Foreign Key (User), Indexed | User ID |
+| `assignedAt` | DateTime | Default: now() | Assignment timestamp |
+
+**Constraints:**
+- Unique constraint on `[projectId, userId]` - prevents duplicate assignments
+- Cascade delete on both project and user
 
 ---
 
 ## API Documentation
 
-### Application
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/` | Health check. Returns "Hello World!". |
+### Authentication Endpoints
 
-### Authentication
-Manage authentication and sessions for both admins and users.
+#### Admin Signup
 
-#### Admin Authentication
-Admins can self-register and authenticate.
+Create a new admin account.
 
-| Method | Endpoint | Description | Request Body | Response |
-| :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/signup` | Admin signup | `{ "firstName": "string", "lastName": "string", "email": "string", "password": "string" }` | `{ "access_token": "string", "admin": { "id": number, "firstName": "string", "lastName": "string", "email": "string" } }` |
-| `POST` | `/auth/login` | Admin login | `{ "email": "string", "password": "string" }` | `{ "access_token": "string" }` |
-| `POST` | `/auth/logout` | Admin logout (requires JWT token) | - | `{ "message": "Logout successful" }` |
+**Endpoint:** `POST /auth/signup`
 
-**Validation Rules:**
-- `firstName`: Required, minimum 3 characters
-- `lastName`: Required, minimum 3 characters
-- `email`: Required, must be valid email format
-- `password`: Required, minimum 6 characters
+**Request Body:**
+```json
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "admin@example.com",
+  "password": "securePassword123"
+}
+```
 
-#### User Authentication
+**Validation:**
+- `firstName`: Required, min 3 characters
+- `lastName`: Required, min 3 characters
+- `email`: Required, valid email format
+- `password`: Required, min 6 characters
 
-> [!IMPORTANT]
-> Users **cannot self-register**. They must be created by an admin using the `POST /user` endpoint. Once created, users can login and logout.
+**Success Response (201):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "admin": {
+    "id": 1,
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "admin@example.com"
+  }
+}
+```
 
-| Method | Endpoint | Description | Request Body | Response |
-| :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/user/login` | User login | `{ "email": "string", "password": "string" }` | `{ "access_token": "string" }` |
-| `POST` | `/auth/user/logout` | User logout (requires JWT token) | - | `{ "message": "Logout successful" }` |
-
----
-
-### Admin Module
-Manage administrator accounts.
-
-> [!IMPORTANT]
-> Admins can only be created through the `/auth/signup` endpoint. Direct admin creation via `/admin` is not available for security reasons.
-
-| Method | Endpoint | Description | Request Body | Response |
-| :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/admin` | Retrieve all admins | - | Array of Admin objects |
-| `GET` | `/admin/:id` | Retrieve an admin by ID | - | Admin object |
-| `PATCH` | `/admin/:id` | Update an existing admin | `{ "firstName"?: "string", "lastName"?: "string", "email"?: "string", "password"?: "string" }` | Updated Admin object |
-| `DELETE` | `/admin/:id` | Delete an admin | - | Deleted Admin object |
-
-**Validation Rules (Update):**
-- All fields are optional
-- `firstName`: Minimum 3 characters (if provided)
-- `lastName`: Minimum 3 characters (if provided)
-- `email`: Must be valid email format (if provided)
-- `password`: Minimum 6 characters (if provided)
+**Error Responses:**
+- `400 Bad Request` - Validation failed
+- `409 Conflict` - Email already exists
 
 ---
 
-### User Module
-Manage user accounts.
+#### Admin Login
 
-> [!IMPORTANT]
-> The `POST /user` endpoint requires **admin authentication**. Include a valid admin JWT token in the Authorization header.
+Authenticate an admin user.
 
-| Method | Endpoint | Description | Request Body | Response |
-| :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/user` | Create a new user (requires admin auth) | `{ "firstName": "string", "lastName": "string", "email": "string", "password": "string" }` | Created User object |
-| `GET` | `/user` | Retrieve all users | - | Array of User objects |
-| `GET` | `/user/:id` | Retrieve a user by ID | - | User object |
-| `PATCH` | `/user/:id` | Update an existing user | `{ "firstName"?: "string", "lastName"?: "string", "email"?: "string", "password"?: "string" }` | Updated User object |
-| `DELETE` | `/user/:id` | Delete a user | - | Deleted User object |
+**Endpoint:** `POST /auth/login`
 
-**Validation Rules (Create):**
-- `firstName`: Required, minimum 3 characters
-- `lastName`: Required, minimum 3 characters
-- `email`: Required, must be valid email format
-- `password`: Required, minimum 6 characters
+**Request Body:**
+```json
+{
+  "email": "admin@example.com",
+  "password": "securePassword123"
+}
+```
 
-**Validation Rules (Update):**
-- All fields are optional
-- `firstName`: Minimum 3 characters (if provided)
-- `lastName`: Minimum 3 characters (if provided)
-- `email`: Must be valid email format (if provided)
-- `password`: Minimum 6 characters (if provided)
+**Success Response (200):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
 
+**Error Responses:**
+- `401 Unauthorized` - Invalid credentials
 
 ---
 
-### Request Module
-Manage user change requests.
+#### Admin Logout
 
-> [!IMPORTANT]
-> Users can only create requests for themselves. Admins can only view and manage requests from users they created.
+Logout the current admin (requires authentication).
 
-> [!WARNING]
-> Password change requests cannot be approved by admins for security reasons. Users must use a different mechanism to change passwords.
+**Endpoint:** `POST /auth/logout`
 
-| Method | Endpoint | Description | Request Body | Response |
-| :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/request` | Create a change request (requires user auth) | `{ "requestType": "firstName" \| "lastName" \| "email" \| "password", "requestedValue": "string", "currentPassword"?: "string" }` | Created UserRequest object |
-| `GET` | `/request/my-requests` | Get current user's requests (requires user auth) | - | Array of UserRequest objects |
-| `GET` | `/request/admin-requests` | Get requests from admin's users (requires admin auth) | - | Array of UserRequest objects |
-| `GET` | `/request/:id` | Get a specific request by ID | - | UserRequest object |
-| `PATCH` | `/request/:id/approve` | Approve a request (requires admin auth) | - | Updated UserRequest object |
-| `PATCH` | `/request/:id/reject` | Reject a request (requires admin auth) | - | Updated UserRequest object |
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
 
-**Validation Rules (Create):**
-- `requestType`: Required, must be one of 'firstName', 'lastName', 'email', 'password'
-- `requestedValue`: Required, minimum 1 character
-- `currentPassword`: Required only for password change requests, minimum 6 characters
-
-**Request Workflow:**
-1. User creates a change request via `POST /request`
-2. Request is automatically assigned to the admin who created the user
-3. Admin views pending requests via `GET /request/admin-requests`
-4. Admin approves or rejects the request via `PATCH /request/:id/approve` or `PATCH /request/:id/reject`
-5. If approved (and not a password request), the user's profile is automatically updated
-6. User can view their request history via `GET /request/my-requests`
+**Success Response (200):**
+```json
+{
+  "message": "Logout successful"
+}
+```
 
 ---
 
-### Project Module
-Manage projects with admin ownership and user assignments.
+#### User Login
 
-> [!IMPORTANT]
-> Projects are created and owned by **admins**. Users can be assigned to projects and can view projects they're assigned to.
+Authenticate a regular user.
 
-| Method | Endpoint | Description | Request Body | Response |
-| :--- | :--- | :--- | :--- | :--- |
-| `POST` | `/project` | Create a project (requires admin auth) | `{ "name": "string", "description"?: "string", "status"?: "active" \| "inactive" \| "completed" }` | Created Project object |
-| `GET` | `/project` | Get all projects (filtered by role) | - | Array of Project objects |
-| `GET` | `/project/:id` | Get a project by ID | - | Project object with relations |
-| `PATCH` | `/project/:id` | Update a project (requires admin auth) | `{ "name"?: "string", "description"?: "string", "status"?: "active" \| "inactive" \| "completed" }` | Updated Project object |
-| `DELETE` | `/project/:id` | Delete a project (requires admin auth) | - | Success message |
-| `POST` | `/project/:id/assign-user` | Assign a user to project (requires admin auth) | `{ "userId": number }` | `{ "assignedUsers": string[] }` - Array of assigned user names |
-| `DELETE` | `/project/:id/remove-user/:userId` | Remove user from project (requires admin auth) | - | `{ "assignedUsers": string[] }` - Array of remaining assigned user names |
+**Endpoint:** `POST /auth/user/login`
 
-**Validation Rules (Create):**
-- `name`: Required, minimum 3 characters
-- `description`: Optional, minimum 10 characters
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "userPassword123"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Error Responses:**
+- `401 Unauthorized` - Invalid credentials
+
+---
+
+#### User Logout
+
+Logout the current user (requires authentication).
+
+**Endpoint:** `POST /auth/user/logout`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Success Response (200):**
+```json
+{
+  "message": "Logout successful"
+}
+```
+
+---
+
+### Admin Management Endpoints
+
+> **Note:** Admins can only be created via `/auth/signup`. Direct creation via `/admin` is disabled for security.
+
+#### Get All Admins
+
+Retrieve all admin accounts.
+
+**Endpoint:** `GET /admin`
+
+**Success Response (200):**
+```json
+[
+  {
+    "id": 1,
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "admin@example.com",
+    "createdAt": "2025-12-24T10:30:00.000Z"
+  }
+]
+```
+
+---
+
+#### Get Admin by ID
+
+Retrieve a specific admin by ID.
+
+**Endpoint:** `GET /admin/:id`
+
+**Success Response (200):**
+```json
+{
+  "id": 1,
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "admin@example.com",
+  "createdAt": "2025-12-24T10:30:00.000Z"
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - Admin not found
+
+---
+
+#### Update Admin
+
+Update an admin's information.
+
+**Endpoint:** `PATCH /admin/:id`
+
+**Request Body (all fields optional):**
+```json
+{
+  "firstName": "Jane",
+  "lastName": "Smith",
+  "email": "newemail@example.com",
+  "password": "newPassword123"
+}
+```
+
+**Validation:**
+- `firstName`: Min 3 characters (if provided)
+- `lastName`: Min 3 characters (if provided)
+- `email`: Valid email format (if provided)
+- `password`: Min 6 characters (if provided)
+
+**Success Response (200):**
+```json
+{
+  "id": 1,
+  "firstName": "Jane",
+  "lastName": "Smith",
+  "email": "newemail@example.com",
+  "createdAt": "2025-12-24T10:30:00.000Z"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Validation failed
+- `404 Not Found` - Admin not found
+- `409 Conflict` - Email already exists
+
+---
+
+#### Delete Admin
+
+Delete an admin account.
+
+**Endpoint:** `DELETE /admin/:id`
+
+**Success Response (200):**
+```json
+{
+  "id": 1,
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "admin@example.com",
+  "createdAt": "2025-12-24T10:30:00.000Z"
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - Admin not found
+
+---
+
+### User Management Endpoints
+
+#### Create User
+
+Create a new user (requires admin authentication).
+
+**Endpoint:** `POST /user`
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**Request Body:**
+```json
+{
+  "firstName": "Alice",
+  "lastName": "Johnson",
+  "email": "alice@example.com",
+  "password": "userPassword123"
+}
+```
+
+**Validation:**
+- `firstName`: Required, min 3 characters
+- `lastName`: Required, min 3 characters
+- `email`: Required, valid email format
+- `password`: Required, min 6 characters
+
+**Success Response (201):**
+```json
+{
+  "id": 5,
+  "firstName": "Alice",
+  "lastName": "Johnson",
+  "email": "alice@example.com",
+  "createdBy": 1,
+  "createdAt": "2025-12-24T11:00:00.000Z"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Validation failed
+- `401 Unauthorized` - Not authenticated
+- `403 Forbidden` - Not an admin
+- `409 Conflict` - Email already exists
+
+---
+
+#### Get All Users
+
+Retrieve all users.
+
+**Endpoint:** `GET /user`
+
+**Success Response (200):**
+```json
+[
+  {
+    "id": 5,
+    "firstName": "Alice",
+    "lastName": "Johnson",
+    "email": "alice@example.com",
+    "createdBy": 1,
+    "createdAt": "2025-12-24T11:00:00.000Z"
+  }
+]
+```
+
+---
+
+#### Get User by ID
+
+Retrieve a specific user by ID.
+
+**Endpoint:** `GET /user/:id`
+
+**Success Response (200):**
+```json
+{
+  "id": 5,
+  "firstName": "Alice",
+  "lastName": "Johnson",
+  "email": "alice@example.com",
+  "createdBy": 1,
+  "createdAt": "2025-12-24T11:00:00.000Z"
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - User not found
+
+---
+
+#### Update User
+
+Update a user's information.
+
+**Endpoint:** `PATCH /user/:id`
+
+**Request Body (all fields optional):**
+```json
+{
+  "firstName": "Alicia",
+  "lastName": "Smith",
+  "email": "newemail@example.com",
+  "password": "newPassword456"
+}
+```
+
+**Validation:**
+- `firstName`: Min 3 characters (if provided)
+- `lastName`: Min 3 characters (if provided)
+- `email`: Valid email format (if provided)
+- `password`: Min 6 characters (if provided)
+
+**Success Response (200):**
+```json
+{
+  "id": 5,
+  "firstName": "Alicia",
+  "lastName": "Smith",
+  "email": "newemail@example.com",
+  "createdBy": 1,
+  "createdAt": "2025-12-24T11:00:00.000Z"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Validation failed
+- `404 Not Found` - User not found
+- `409 Conflict` - Email already exists
+
+---
+
+#### Delete User
+
+Delete a user account.
+
+**Endpoint:** `DELETE /user/:id`
+
+**Success Response (200):**
+```json
+{
+  "id": 5,
+  "firstName": "Alice",
+  "lastName": "Johnson",
+  "email": "alice@example.com",
+  "createdBy": 1,
+  "createdAt": "2025-12-24T11:00:00.000Z"
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - User not found
+
+---
+
+### Request Management Endpoints
+
+> **Important:** Users can only create requests for themselves. Admins can only manage requests from users they created.
+
+#### Create Change Request
+
+Create a request to change user profile information (requires user authentication).
+
+**Endpoint:** `POST /request`
+
+**Headers:**
+```
+Authorization: Bearer <user_access_token>
+```
+
+**Request Body:**
+```json
+{
+  "requestType": "email",
+  "requestedValue": "newemail@example.com"
+}
+```
+
+**For Password Change:**
+```json
+{
+  "requestType": "password",
+  "requestedValue": "newPassword789",
+  "currentPassword": "currentPassword123"
+}
+```
+
+**Validation:**
+- `requestType`: Required, must be 'firstName', 'lastName', 'email', or 'password'
+- `requestedValue`: Required, min 1 character
+- `currentPassword`: Required for password changes, min 6 characters
+
+**Success Response (201):**
+```json
+{
+  "id": 10,
+  "userId": 5,
+  "adminId": 1,
+  "requestType": "email",
+  "currentValue": "alice@example.com",
+  "requestedValue": "newemail@example.com",
+  "status": "pending",
+  "createdAt": "2025-12-24T12:00:00.000Z",
+  "updatedAt": "2025-12-24T12:00:00.000Z"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Validation failed or user has no assigned admin
+- `401 Unauthorized` - Not authenticated
+- `403 Forbidden` - Not a regular user
+
+---
+
+#### Get My Requests
+
+Get all requests created by the current user (requires user authentication).
+
+**Endpoint:** `GET /request/my-requests`
+
+**Headers:**
+```
+Authorization: Bearer <user_access_token>
+```
+
+**Success Response (200):**
+```json
+[
+  {
+    "id": 10,
+    "userId": 5,
+    "adminId": 1,
+    "requestType": "email",
+    "currentValue": "alice@example.com",
+    "requestedValue": "newemail@example.com",
+    "status": "pending",
+    "createdAt": "2025-12-24T12:00:00.000Z",
+    "updatedAt": "2025-12-24T12:00:00.000Z"
+  }
+]
+```
+
+---
+
+#### Get Admin Requests
+
+Get all requests from users created by the current admin (requires admin authentication).
+
+**Endpoint:** `GET /request/admin-requests`
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**Success Response (200):**
+```json
+[
+  {
+    "id": 10,
+    "userId": 5,
+    "adminId": 1,
+    "requestType": "email",
+    "currentValue": "alice@example.com",
+    "requestedValue": "newemail@example.com",
+    "status": "pending",
+    "createdAt": "2025-12-24T12:00:00.000Z",
+    "updatedAt": "2025-12-24T12:00:00.000Z",
+    "user": {
+      "id": 5,
+      "firstName": "Alice",
+      "lastName": "Johnson",
+      "email": "alice@example.com"
+    }
+  }
+]
+```
+
+---
+
+#### Get Request by ID
+
+Get a specific request by ID.
+
+**Endpoint:** `GET /request/:id`
+
+**Success Response (200):**
+```json
+{
+  "id": 10,
+  "userId": 5,
+  "adminId": 1,
+  "requestType": "email",
+  "currentValue": "alice@example.com",
+  "requestedValue": "newemail@example.com",
+  "status": "pending",
+  "createdAt": "2025-12-24T12:00:00.000Z",
+  "updatedAt": "2025-12-24T12:00:00.000Z"
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - Request not found
+
+---
+
+#### Approve Request
+
+Approve a change request (requires admin authentication).
+
+**Endpoint:** `PATCH /request/:id/approve`
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**Success Response (200):**
+```json
+{
+  "id": 10,
+  "userId": 5,
+  "adminId": 1,
+  "requestType": "email",
+  "currentValue": "alice@example.com",
+  "requestedValue": "newemail@example.com",
+  "status": "approved",
+  "createdAt": "2025-12-24T12:00:00.000Z",
+  "updatedAt": "2025-12-24T12:05:00.000Z"
+}
+```
+
+> **Note:** For firstName, lastName, and email requests, the user's profile is automatically updated upon approval. Password change requests cannot be approved for security reasons.
+
+**Error Responses:**
+- `400 Bad Request` - Cannot approve password requests or already processed requests
+- `403 Forbidden` - Not authorized to approve this request
+- `404 Not Found` - Request not found
+
+---
+
+#### Reject Request
+
+Reject a change request (requires admin authentication).
+
+**Endpoint:** `PATCH /request/:id/reject`
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**Success Response (200):**
+```json
+{
+  "id": 10,
+  "userId": 5,
+  "adminId": 1,
+  "requestType": "email",
+  "currentValue": "alice@example.com",
+  "requestedValue": "newemail@example.com",
+  "status": "rejected",
+  "createdAt": "2025-12-24T12:00:00.000Z",
+  "updatedAt": "2025-12-24T12:05:00.000Z"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Request already processed
+- `403 Forbidden` - Not authorized to reject this request
+- `404 Not Found` - Request not found
+
+---
+
+### Project Management Endpoints
+
+> **Important:** Projects are created and owned by admins. Users can be assigned to projects and can view projects they're assigned to.
+
+#### Create Project
+
+Create a new project (requires admin authentication).
+
+**Endpoint:** `POST /project`
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**Request Body:**
+```json
+{
+  "name": "Website Redesign",
+  "description": "Complete redesign of company website",
+  "status": "active"
+}
+```
+
+**Validation:**
+- `name`: Required, min 3 characters
+- `description`: Optional, min 10 characters
 - `status`: Optional, must be 'active', 'inactive', or 'completed' (default: 'active')
 
-**Validation Rules (Update):**
-- All fields are optional
-- Same validation rules as create when provided
+**Success Response (201):**
+```json
+{
+  "id": 2,
+  "name": "Website Redesign",
+  "description": "Complete redesign of company website",
+  "status": "active",
+  "createdBy": 1,
+  "createdAt": "2025-12-24T13:00:00.000Z",
+  "updatedAt": "2025-12-24T13:00:00.000Z"
+}
+```
 
-**Validation Rules (Assign User):**
+**Error Responses:**
+- `400 Bad Request` - Validation failed
+- `401 Unauthorized` - Not authenticated
+- `403 Forbidden` - Not an admin
+
+---
+
+#### Get All Projects
+
+Get all projects (filtered by role).
+
+**Endpoint:** `GET /project`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Admin Response (200):**
+Returns all projects created by the admin.
+
+```json
+[
+  {
+    "id": 2,
+    "name": "Website Redesign",
+    "description": "Complete redesign of company website",
+    "status": "active",
+    "createdBy": 1,
+    "createdAt": "2025-12-24T13:00:00.000Z",
+    "updatedAt": "2025-12-24T13:00:00.000Z",
+    "admin": {
+      "id": 1,
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "admin@example.com"
+    },
+    "users": [
+      {
+        "id": 15,
+        "projectId": 2,
+        "userId": 5,
+        "assignedAt": "2025-12-24T13:10:00.000Z",
+        "user": {
+          "id": 5,
+          "firstName": "Alice",
+          "lastName": "Johnson",
+          "email": "alice@example.com"
+        }
+      }
+    ]
+  }
+]
+```
+
+**User Response (200):**
+Returns only projects the user is assigned to.
+
+```json
+[
+  {
+    "id": 2,
+    "name": "Website Redesign",
+    "description": "Complete redesign of company website",
+    "status": "active",
+    "createdBy": 1,
+    "createdAt": "2025-12-24T13:00:00.000Z",
+    "updatedAt": "2025-12-24T13:00:00.000Z",
+    "admin": {
+      "id": 1,
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "admin@example.com"
+    }
+  }
+]
+```
+
+---
+
+#### Get Project by ID
+
+Get a specific project by ID.
+
+**Endpoint:** `GET /project/:id`
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Success Response (200):**
+```json
+{
+  "id": 2,
+  "name": "Website Redesign",
+  "description": "Complete redesign of company website",
+  "status": "active",
+  "createdBy": 1,
+  "createdAt": "2025-12-24T13:00:00.000Z",
+  "updatedAt": "2025-12-24T13:00:00.000Z",
+  "admin": {
+    "id": 1,
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "admin@example.com"
+  },
+  "users": [
+    {
+      "id": 15,
+      "projectId": 2,
+      "userId": 5,
+      "assignedAt": "2025-12-24T13:10:00.000Z",
+      "user": {
+        "id": 5,
+        "firstName": "Alice",
+        "lastName": "Johnson",
+        "email": "alice@example.com"
+      }
+    }
+  ]
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - Project not found
+
+---
+
+#### Update Project
+
+Update a project (requires admin authentication, admin must own the project).
+
+**Endpoint:** `PATCH /project/:id`
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**Request Body (all fields optional):**
+```json
+{
+  "name": "Website Redesign v2",
+  "description": "Updated project scope",
+  "status": "completed"
+}
+```
+
+**Validation:**
+- `name`: Min 3 characters (if provided)
+- `description`: Min 10 characters (if provided)
+- `status`: Must be 'active', 'inactive', or 'completed' (if provided)
+
+**Success Response (200):**
+```json
+{
+  "id": 2,
+  "name": "Website Redesign v2",
+  "description": "Updated project scope",
+  "status": "completed",
+  "createdBy": 1,
+  "createdAt": "2025-12-24T13:00:00.000Z",
+  "updatedAt": "2025-12-24T14:00:00.000Z"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Validation failed
+- `403 Forbidden` - Not authorized (not the project owner)
+- `404 Not Found` - Project not found
+
+---
+
+#### Delete Project
+
+Delete a project (requires admin authentication, admin must own the project).
+
+**Endpoint:** `DELETE /project/:id`
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**Success Response (200):**
+```json
+{
+  "message": "Project deleted successfully"
+}
+```
+
+**Error Responses:**
+- `403 Forbidden` - Not authorized (not the project owner)
+- `404 Not Found` - Project not found
+
+---
+
+#### Assign User to Project
+
+Assign a user to a project (requires admin authentication, admin must own the project).
+
+**Endpoint:** `POST /project/:id/assign-user`
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**Request Body:**
+```json
+{
+  "userId": 5
+}
+```
+
+**Validation:**
 - `userId`: Required, must be a positive integer
 
-**Project Workflow:**
-1. Admin creates a project via `POST /project`
-2. Admin assigns users to the project via `POST /project/:id/assign-user`
-   - Response includes all currently assigned user names: `{ "assignedUsers": ["John Doe", "Jane Smith"] }`
-3. Users can view their assigned projects via `GET /project`
-4. Admins can view all their projects via `GET /project`
-5. Admins can update or delete their own projects
-6. Admins can remove users from their projects via `DELETE /project/:id/remove-user/:userId`
-   - Response includes remaining assigned user names: `{ "assignedUsers": ["John Doe"] }`
-   - Operation is idempotent - removing an already-removed user succeeds without error
+**Success Response (200):**
+```json
+{
+  "assignedUsers": [
+    "Alice Johnson",
+    "Bob Smith"
+  ]
+}
+```
 
-**Authorization:**
-- Only admins can create, update, and delete projects
-- Admins can only manage their own projects
-- Users can only view projects they're assigned to
-- Both admins and users can view project details
+Returns the list of all users currently assigned to the project.
+
+**Error Responses:**
+- `400 Bad Request` - Validation failed
+- `403 Forbidden` - Not authorized (not the project owner)
+- `404 Not Found` - Project or user not found
+- `409 Conflict` - User already assigned to this project
 
 ---
 
-### Data Models
+#### Remove User from Project
 
-#### Admin
-```typescript
+Remove a user from a project (requires admin authentication, admin must own the project).
+
+**Endpoint:** `DELETE /project/:id/remove-user/:userId`
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**Success Response (200):**
+```json
 {
-  id: number;           // Auto-increment
-  firstName: string;
-  lastName: string;
-  email: string;        // Unique
-  password: string;     // Hashed
-  createdAt: Date;      // Default: now()
+  "assignedUsers": [
+    "Bob Smith"
+  ]
 }
 ```
 
-#### User
-```typescript
-{
-  id: number;           // Auto-increment
-  firstName: string;
-  lastName: string;
-  email: string;        // Unique
-  password: string;     // Hashed
-  createdBy: number;    // Foreign key to Admin (nullable)
-  createdAt: Date;      // Default: now()
-}
-```
+Returns the list of remaining users assigned to the project.
 
-#### UserRequest
-```typescript
-{
-  id: number;           // Auto-increment
-  userId: number;       // Foreign key to User
-  adminId: number;      // Foreign key to Admin
-  requestType: string;  // 'firstName', 'lastName', 'email', 'password'
-  currentValue: string; // Current value (null for password)
-  requestedValue: string; // Requested value ('[HIDDEN]' for password)
-  status: string;       // 'pending', 'approved', 'rejected'
-  createdAt: Date;      // Default: now()
-  updatedAt: Date;      // Auto-updated
-}
-```
+> **Note:** This operation is idempotent. Removing a user who is not assigned will succeed without error and return the current assignment list.
 
-#### Project
-```typescript
-{
-  id: number;           // Auto-increment
-  name: string;
-  description: string;  // Optional
-  status: string;       // 'active', 'inactive', 'completed' (default: 'active')
-  createdBy: number;    // Foreign key to Admin
-  createdAt: Date;      // Default: now()
-  updatedAt: Date;      // Auto-updated
-}
-```
-
-#### ProjectUser
-```typescript
-{
-  id: number;           // Auto-increment
-  projectId: number;    // Foreign key to Project
-  userId: number;       // Foreign key to User
-  assignedAt: Date;     // Default: now()
-}
-```
+**Error Responses:**
+- `403 Forbidden` - Not authorized (not the project owner)
+- `404 Not Found` - Project not found
 
 ---
 
-### Authentication
+## Authentication & Authorization
+
+### JWT Token Structure
 
 All protected endpoints require a JWT token in the Authorization header:
 
@@ -353,16 +1138,22 @@ All protected endpoints require a JWT token in the Authorization header:
 Authorization: Bearer <access_token>
 ```
 
-The JWT payload contains:
+### Token Payload
+
 ```typescript
 {
   email: string;
-  sub: number;          // User/Admin ID (in token)
+  sub: number;          // User/Admin ID
   role: 'admin' | 'user';
+  iat: number;          // Issued at
+  exp: number;          // Expiration
 }
 ```
 
-**Note:** When accessing the authenticated user in controllers via `req.user`, the payload is transformed to:
+### Request User Object
+
+In controllers, the authenticated user is available via `req.user`:
+
 ```typescript
 {
   userId: number;       // Extracted from payload.sub
@@ -371,103 +1162,74 @@ The JWT payload contains:
 }
 ```
 
-**Example usage in controllers:**
+### Guards
+
+#### AdminGuard
+
+Protects endpoints accessible only by admins.
+
 ```typescript
-@UseGuards(UserGuard)
+@UseGuards(AdminGuard)
 @Post()
 create(@Request() req, @Body() createDto: CreateDto) {
-  const userId = req.user.userId;  // Access user ID
-  const email = req.user.email;    // Access email
-  const role = req.user.role;      // Access role
+  const adminId = req.user.userId;
   // ...
 }
 ```
 
----
-
-### Authentication Guards
-
-The application uses role-based guards to protect endpoints:
-
-#### AdminGuard
-Protects endpoints that should only be accessible by authenticated admins.
-
-**Usage:**
-```typescript
-@UseGuards(AdminGuard)
-@Post()
-create(@Body() createUserDto: CreateUserDto) {
-  return this.userService.create(createUserDto);
-}
-```
-
-**Implementation:**
-```typescript
-async canActivate(context: ExecutionContext): Promise<boolean> {
-  const isAuthenticated = await super.canActivate(context);
-  if (!isAuthenticated) return false;
-  
-  const user = context.switchToHttp().getRequest().user;
-  if (!user || user.role !== 'admin') {
-    throw new ForbiddenException('Only admins can perform this action');
-  }
-  return true;
-}
-```
-
 **Behavior:**
-- Extends `JwtAuthGuard` to verify JWT token asynchronously
-- Checks that `user.role === 'admin'`
-- Throws `ForbiddenException` if user is not an admin
+- Extends `JwtAuthGuard` for JWT verification
+- Checks `user.role === 'admin'`
+- Throws `ForbiddenException` if not an admin
 
 #### UserGuard
-Protects endpoints that should only be accessible by authenticated users.
 
-**Usage:**
+Protects endpoints accessible only by regular users.
+
 ```typescript
 @UseGuards(UserGuard)
 @Get('profile')
 getProfile(@Request() req) {
-  return req.user;
-}
-```
-
-**Implementation:**
-```typescript
-async canActivate(context: ExecutionContext): Promise<boolean> {
-  const isAuthenticated = await super.canActivate(context);
-  if (!isAuthenticated) return false;
-  
-  const user = context.switchToHttp().getRequest().user;
-  if (!user || user.role !== 'user') {
-    throw new ForbiddenException('Only users can perform this action');
-  }
-  return true;
+  const userId = req.user.userId;
+  // ...
 }
 ```
 
 **Behavior:**
-- Extends `JwtAuthGuard` to verify JWT token asynchronously
-- Checks that `user.role === 'user'`
-- Throws `ForbiddenException` if user is not a regular user
+- Extends `JwtAuthGuard` for JWT verification
+- Checks `user.role === 'user'`
+- Throws `ForbiddenException` if not a regular user
 
 #### JwtAuthGuard
-Base guard for JWT authentication without role checking. Use this when you need to authenticate any user (admin or regular user) without role restrictions.
 
-**Current Protected Endpoints:**
-- `POST /user` - Protected by `AdminGuard` (only admins can create users)
+Base guard for JWT authentication without role checking. Use when both admins and users can access an endpoint.
+
+```typescript
+@UseGuards(JwtAuthGuard)
+@Get()
+findAll(@Request() req) {
+  const role = req.user.role;
+  // Filter results based on role
+}
+```
 
 ---
 
-## Test
+## Testing
 
 ```bash
-# unit tests
-$ npm run test
+# Unit tests
+npm run test
 
-# e2e tests
-$ npm run test:e2e
+# E2E tests
+npm run test:e2e
 
-# test coverage
-$ npm run test:cov
+# Test coverage
+npm run test:cov
 ```
+
+---
+
+## License
+
+This project is [MIT licensed](LICENSE).
