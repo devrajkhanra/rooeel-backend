@@ -119,6 +119,12 @@ export class ProjectService implements IProjectService {
                                 email: true,
                             },
                         },
+                        designation: {
+                            select: {
+                                id: true,
+                                name: true,
+                            },
+                        },
                     },
                 },
             },

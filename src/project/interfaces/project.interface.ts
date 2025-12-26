@@ -18,6 +18,10 @@ export interface ProjectWithRelations extends Project {
             lastName: string;
             email: string;
         };
+        designation?: {
+            id: number;
+            name: string;
+        } | null;
     }[];
 }
 
