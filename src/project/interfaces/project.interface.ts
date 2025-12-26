@@ -27,8 +27,13 @@ export interface ProjectWithRelations extends Project {
 
 export interface DesignationWithRelations {
     id: number;
-    name: string;
-    description: string | null;
+    designationId: number;
+    projectId: number;
+    designation: {
+        id: number;
+        name: string;
+        description: string | null;
+    };
     assignedAt: Date;
 }
 

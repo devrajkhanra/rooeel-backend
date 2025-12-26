@@ -456,9 +456,14 @@ export class ProjectService implements IProjectService {
         });
 
         const designations: DesignationWithRelations[] = projectDesignations.map((pd) => ({
-            id: pd.designation.id,
-            name: pd.designation.name,
-            description: pd.designation.description,
+            id: pd.id,
+            designationId: pd.designationId,
+            projectId: pd.projectId,
+            designation: {
+                id: pd.designation.id,
+                name: pd.designation.name,
+                description: pd.designation.description,
+            },
             assignedAt: pd.assignedAt,
         }));
 
