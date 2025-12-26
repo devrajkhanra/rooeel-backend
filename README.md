@@ -1211,7 +1211,17 @@ Authorization: Bearer <admin_token>
 - `403 Forbidden` - Not authorized (not the project owner)
 - `404 Not Found` - Project, user, or designation not found
 
-> **Note:** User must be assigned to the project first, and the designation must be assigned to the project before it can be assigned to a user.
+> **Important Prerequisites:**
+> 1. User must be assigned to the project first (`POST /project/:id/assign-user`)
+> 2. Designation must be assigned to the project first (`POST /project/:id/assign-designation`)
+> 3. Only then can you assign the designation to the user
+>
+> **Workflow Example:**
+> ```
+> 1. POST /project/2/assign-user { "userId": 5 }
+> 2. POST /project/2/assign-designation { "designationId": 1 }
+> 3. PATCH /project/2/user/5/designation { "designationId": 1 }
+> ```
 
 ---
 
