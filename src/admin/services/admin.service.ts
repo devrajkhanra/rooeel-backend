@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateAdminDto } from '../dto/create-admin.dto';
 import { UpdateAdminDto } from '../dto/update-admin.dto';
 import { IAdminService } from '../interfaces/admin.interface';
-import { PasswordService } from './password.service';
+import { PasswordService } from '../../common/services/password.service';
 import { CustomLogger } from '../../logger/logger.service';
 import { Admin } from '@prisma/client';
 

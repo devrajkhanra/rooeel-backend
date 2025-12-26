@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { IUserService } from '../interfaces/user.interface';
-import { PasswordService } from './password.service';
+import { PasswordService } from '../../common/services/password.service';
 import { CustomLogger } from '../../logger/logger.service';
 import { User } from '@prisma/client';
 

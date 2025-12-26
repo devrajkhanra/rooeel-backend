@@ -21,6 +21,7 @@ A comprehensive backend service built with [NestJS](https://github.com/nestjs/ne
   - [User Management](#user-management-endpoints)
   - [Request Management](#request-management-endpoints)
   - [Project Management](#project-management-endpoints)
+  - [Designation Management](#designation-management-endpoints)
 - [Authentication & Authorization](#authentication--authorization)
 - [Testing](#testing)
 
@@ -186,11 +187,54 @@ ENABLE_HTTP_LOGGING=true
 | `id` | Integer | Primary Key, Auto-increment | Unique identifier |
 | `projectId` | Integer | Foreign Key (Project), Indexed | Project ID |
 | `userId` | Integer | Foreign Key (User), Indexed | User ID |
+| `designationId` | Integer | Foreign Key (Designation), Nullable, Indexed | Optional designation/role for user in project |
 | `assignedAt` | DateTime | Default: now() | Assignment timestamp |
 
 **Constraints:**
 - Unique constraint on `[projectId, userId]` - prevents duplicate assignments
 - Cascade delete on both project and user
+- SetNull on designation (if designation deleted, user stays in project)
+
+**Purpose:**
+- Links users to projects with optional role/designation
+- Allows users to have different roles in different projects
+- Designation must be assigned to project before assigning to user
+
+### Designation Table
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | Integer | Primary Key, Auto-increment | Unique identifier |
+| `name` | String | Required, Unique | Designation name (e.g., "Software Engineer") |
+| `description` | String | Nullable | Description of the designation |
+| `createdAt` | DateTime | Default: now() | Creation timestamp |
+| `updatedAt` | DateTime | Auto-updated | Last update timestamp |
+
+**Relations:**
+- Can be assigned to many projects (`projects` via `ProjectDesignation`)
+
+**Purpose:**
+- Defines job roles/titles in the system
+- Managed by admins only
+- Can be assigned to projects to define available roles within each project
+
+### ProjectDesignation Table (Join Table)
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | Integer | Primary Key, Auto-increment | Unique identifier |
+| `projectId` | Integer | Foreign Key (Project), Indexed | Project ID |
+| `designationId` | Integer | Foreign Key (Designation), Indexed | Designation ID |
+| `assignedAt` | DateTime | Default: now() | Assignment timestamp |
+
+**Constraints:**
+- Unique constraint on `[projectId, designationId]` - prevents duplicate assignments
+- Cascade delete on both project and designation
+
+**Purpose:**
+- Links designations to specific projects
+- Allows admins to define which roles are available in each project
+- Enables project-specific role management
 
 ---
 
@@ -1125,6 +1169,263 @@ Returns the list of remaining users assigned to the project.
 **Error Responses:**
 - `403 Forbidden` - Not authorized (not the project owner)
 - `404 Not Found` - Project not found
+
+---
+
+#### Set User Designation in Project
+
+Assign a specific designation/role to a user within a project (requires admin authentication, admin must own the project).
+
+**Endpoint:** `PATCH /project/:id/user/:userId/designation`
+
+**Headers:**
+```
+Authorization: Bearer <admin_token>
+```
+
+**Request Body:**
+```json
+{
+  "designationId": 1
+}
+```
+
+**Validation:**
+- `designationId`: Required, must be a positive integer
+
+**Success Response (200):**
+```json
+{
+  "message": "Designation assigned successfully",
+  "user": {
+    "id": 5,
+    "firstName": "Alice",
+    "lastName": "Johnson",
+    "designation": "Software Engineer"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Designation not assigned to project
+- `403 Forbidden` - Not authorized (not the project owner)
+- `404 Not Found` - Project, user, or designation not found
+
+> **Note:** User must be assigned to the project first, and the designation must be assigned to the project before it can be assigned to a user.
+
+---
+
+#### Remove User Designation from Project
+
+Remove a user's designation/role from a project (requires admin authentication, admin must own the project).
+
+**Endpoint:** `DELETE /project/:id/user/:userId/designation`
+
+**Headers:**
+```
+Authorization: Bearer <admin_token>
+```
+
+**Success Response (200):**
+```json
+{
+  "message": "Designation removed successfully",
+  "user": {
+    "id": 5,
+    "firstName": "Alice",
+    "lastName": "Johnson",
+    "designation": null
+  }
+}
+```
+
+**Error Responses:**
+- `403 Forbidden` - Not authorized (not the project owner)
+- `404 Not Found` - Project or user not found
+
+> **Note:** This operation is idempotent. Removing a designation when the user has none will succeed without error.
+
+---
+
+### Designation Management Endpoints
+
+> **Important:** All designation endpoints require admin authentication. Designations are used to define job roles/titles in the system.
+
+#### Create Designation
+
+Create a new designation (requires admin authentication).
+
+**Endpoint:** `POST /designation`
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**Request Body:**
+```json
+{
+  "name": "Software Engineer",
+  "description": "Responsible for developing and maintaining software applications"
+}
+```
+
+**Validation:**
+- `name`: Required, min 2 characters, max 100 characters
+- `description`: Optional, min 10 characters, max 500 characters
+
+**Success Response (201):**
+```json
+{
+  "id": 1,
+  "name": "Software Engineer",
+  "description": "Responsible for developing and maintaining software applications",
+  "createdAt": "2025-12-25T10:00:00.000Z",
+  "updatedAt": "2025-12-25T10:00:00.000Z"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Validation failed
+- `401 Unauthorized` - Not authenticated
+- `403 Forbidden` - Not an admin
+- `409 Conflict` - Designation with this name already exists
+
+---
+
+#### Get All Designations
+
+Retrieve all designations (requires admin authentication).
+
+**Endpoint:** `GET /designation`
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**Success Response (200):**
+```json
+[
+  {
+    "id": 1,
+    "name": "Software Engineer",
+    "description": "Responsible for developing and maintaining software applications",
+    "createdAt": "2025-12-25T10:00:00.000Z",
+    "updatedAt": "2025-12-25T10:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "name": "Project Manager",
+    "description": "Oversees project planning and execution",
+    "createdAt": "2025-12-25T10:05:00.000Z",
+    "updatedAt": "2025-12-25T10:05:00.000Z"
+  }
+]
+```
+
+Designations are returned in alphabetical order by name.
+
+---
+
+#### Get Designation by ID
+
+Retrieve a specific designation by ID (requires admin authentication).
+
+**Endpoint:** `GET /designation/:id`
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**Success Response (200):**
+```json
+{
+  "id": 1,
+  "name": "Software Engineer",
+  "description": "Responsible for developing and maintaining software applications",
+  "createdAt": "2025-12-25T10:00:00.000Z",
+  "updatedAt": "2025-12-25T10:00:00.000Z"
+}
+```
+
+**Error Responses:**
+- `401 Unauthorized` - Not authenticated
+- `403 Forbidden` - Not an admin
+- `404 Not Found` - Designation not found
+
+---
+
+#### Update Designation
+
+Update a designation (requires admin authentication).
+
+**Endpoint:** `PATCH /designation/:id`
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**Request Body (all fields optional):**
+```json
+{
+  "name": "Senior Software Engineer",
+  "description": "Leads development of complex software systems"
+}
+```
+
+**Validation:**
+- `name`: Min 2 characters, max 100 characters (if provided)
+- `description`: Min 10 characters, max 500 characters (if provided)
+
+**Success Response (200):**
+```json
+{
+  "id": 1,
+  "name": "Senior Software Engineer",
+  "description": "Leads development of complex software systems",
+  "createdAt": "2025-12-25T10:00:00.000Z",
+  "updatedAt": "2025-12-25T11:00:00.000Z"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Validation failed
+- `401 Unauthorized` - Not authenticated
+- `403 Forbidden` - Not an admin
+- `404 Not Found` - Designation not found
+- `409 Conflict` - Designation with this name already exists
+
+---
+
+#### Delete Designation
+
+Delete a designation (requires admin authentication).
+
+**Endpoint:** `DELETE /designation/:id`
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+```
+
+**Success Response (200):**
+```json
+{
+  "id": 1,
+  "name": "Software Engineer",
+  "description": "Responsible for developing and maintaining software applications",
+  "createdAt": "2025-12-25T10:00:00.000Z",
+  "updatedAt": "2025-12-25T10:00:00.000Z"
+}
+```
+
+**Error Responses:**
+- `401 Unauthorized` - Not authenticated
+- `403 Forbidden` - Not an admin
+- `404 Not Found` - Designation not found
 
 ---
 

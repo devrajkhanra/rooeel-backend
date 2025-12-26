@@ -1,22 +1,21 @@
 import { Injectable, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { AdminService } from '../admin/services/admin.service';
-import { PasswordService as AdminPasswordService } from '../admin/services/password.service';
-import { UserService } from '../user/services/user.service';
-import { PasswordService as UserPasswordService } from '../user/services/password.service';
-import { LoginDto } from './dto/login.dto';
-import { SignupDto } from './dto/signup.dto';
+import { AdminService } from '../../admin/services/admin.service';
+import { UserService } from '../../user/services/user.service';
+import { PasswordService } from '../../common/services/password.service';
+import { LoginDto } from '../dto/login.dto';
+import { SignupDto } from '../dto/signup.dto';
+import { IAuthService } from '../interfaces/auth.interface';
 
 @Injectable()
-export class AuthService {
+export class AuthService implements IAuthService {
     private readonly logger = new Logger(AuthService.name);
 
     constructor(
         private adminService: AdminService,
         private userService: UserService,
         private jwtService: JwtService,
-        private adminPasswordService: AdminPasswordService,
-        private userPasswordService: UserPasswordService,
+        private passwordService: PasswordService,
     ) { }
 
     async signup(signupDto: SignupDto) {
@@ -44,7 +43,7 @@ export class AuthService {
 
     async validateAdmin(email: string, pass: string): Promise<any> {
         const admin = await this.adminService.findByEmail(email);
-        if (admin && await this.adminPasswordService.compare(pass, admin.password)) {
+        if (admin && await this.passwordService.compare(pass, admin.password)) {
             const { password, ...result } = admin;
             return result;
         }
@@ -53,7 +52,7 @@ export class AuthService {
 
     async validateUser(email: string, pass: string): Promise<any> {
         const user = await this.userService.findByEmail(email);
-        if (user && await this.userPasswordService.compare(pass, user.password)) {
+        if (user && await this.passwordService.compare(pass, user.password)) {
             const { password, ...result } = user;
             return result;
         }

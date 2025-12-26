@@ -11,8 +11,8 @@ import {
 } from '@nestjs/common';
 import { RequestService } from './services/request.service';
 import { CreateRequestDto } from './dto/create-request.dto';
-import { UserGuard } from '../auth/user.guard';
-import { AdminGuard } from '../auth/admin.guard';
+import { UserGuard } from '../auth/guards/user.guard';
+import { AdminGuard } from '../auth/guards/admin.guard';
 
 @Controller('request')
 export class RequestController {
