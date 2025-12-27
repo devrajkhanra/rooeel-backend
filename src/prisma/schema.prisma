@@ -30,6 +30,7 @@ model User {
   admin     Admin?        @relation(fields: [createdBy], references: [id])
   requests  UserRequest[] // One user can make many requests
   projects  ProjectUser[] // Many-to-many relation with projects
+  assignedTasks Task[]    // Tasks assigned to this user
 }
 
 model UserRequest {
@@ -60,6 +61,7 @@ model Project {
   updatedAt   DateTime      @updatedAt
   admin       Admin         @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   users       ProjectUser[] // Many-to-many relation with users
+  tasks       Task[]        // Tasks in this project
 
   @@index([createdBy])
   @@index([status])
@@ -76,4 +78,24 @@ model ProjectUser {
   @@unique([projectId, userId]) // Prevent duplicate assignments
   @@index([projectId])
   @@index([userId])
+}
+
+model Task {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  status      String   @default("pending") // 'pending', 'accepted', 'in-progress', 'done'
+  type        String   @default("basic") // 'basic', 'form'
+  formSchema  Json?    // Stores the form definition for 'form' type
+  submissionData Json? // Stores user submission for 'form' type
+  projectId   Int
+  assignedTo  Int?     // Nullable, task might not be assigned yet
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee    User?    @relation(fields: [assignedTo], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+  @@index([assignedTo])
 }

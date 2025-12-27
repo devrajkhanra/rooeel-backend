@@ -9,6 +9,7 @@ import { UserModule } from './user/user.module';
 import { LoggerModule } from './logger/logger.module';
 import { RequestModule } from './request/request.module';
 import { ProjectModule } from './project/project.module';
+import { TaskModule } from './task/task.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ProjectModule } from './project/project.module';
     LoggerModule,
     RequestModule,
     ProjectModule,
+    TaskModule,
   ],
   controllers: [AppController],
   providers: [AppService],
