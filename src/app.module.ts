@@ -9,7 +9,6 @@ import { UserModule } from './user/user.module';
 import { LoggerModule } from './logger/logger.module';
 import { RequestModule } from './request/request.module';
 import { ProjectModule } from './project/project.module';
-import { DesignationModule } from './designation/designation.module';
 
 @Module({
   imports: [
@@ -23,7 +22,6 @@ import { DesignationModule } from './designation/designation.module';
     LoggerModule,
     RequestModule,
     ProjectModule,
-    DesignationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

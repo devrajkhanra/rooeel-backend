@@ -18,30 +18,7 @@ export interface ProjectWithRelations extends Project {
             lastName: string;
             email: string;
         };
-        designation?: {
-            id: number;
-            name: string;
-        } | null;
     }[];
-}
-
-export interface DesignationWithRelations {
-    id: number;
-    designationId: number;
-    projectId: number;
-    designation: {
-        id: number;
-        name: string;
-        description: string | null;
-    };
-    assignedAt: Date;
-}
-
-export interface UserWithDesignation {
-    id: number;
-    firstName: string;
-    lastName: string;
-    designation: string | null;
 }
 
 export interface IProjectService {
@@ -52,9 +29,4 @@ export interface IProjectService {
     remove(id: number, adminId: number): Promise<void>;
     assignUser(projectId: number, userId: number, adminId: number): Promise<string[]>;
     removeUser(projectId: number, userId: number, adminId: number): Promise<string[]>;
-    assignDesignation(projectId: number, designationId: number, adminId: number): Promise<string[]>;
-    removeDesignation(projectId: number, designationId: number, adminId: number): Promise<string[]>;
-    getProjectDesignations(projectId: number): Promise<DesignationWithRelations[]>;
-    setUserDesignation(projectId: number, userId: number, designationId: number, adminId: number): Promise<UserWithDesignation>;
-    removeUserDesignation(projectId: number, userId: number, adminId: number): Promise<UserWithDesignation>;
 }

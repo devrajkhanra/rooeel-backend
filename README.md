@@ -4,7 +4,7 @@
 
 # Rooeel Backend
 
-A comprehensive backend service built with [NestJS](https://github.com/nestjs/nest) and [Prisma](https://www.prisma.io/) featuring role-based authentication, user management, change request workflows, project management with designations, and complete CRUD operations.
+A comprehensive backend service built with [NestJS](https://github.com/nestjs/nest) and [Prisma](https://www.prisma.io/) featuring role-based authentication, user management, change request workflows, project management, and complete CRUD operations.
 
 ## Table of Contents
 
@@ -21,7 +21,6 @@ A comprehensive backend service built with [NestJS](https://github.com/nestjs/ne
   - [User Management Endpoints](#user-management-endpoints)
   - [Request Management Endpoints](#request-management-endpoints)
   - [Project Management Endpoints](#project-management-endpoints)
-  - [Designation Management Endpoints](#designation-management-endpoints)
 - [Authentication & Authorization](#authentication--authorization)
 - [Error Handling](#error-handling)
 - [Testing](#testing)
@@ -126,7 +125,7 @@ ENABLE_HTTP_LOGGING=true  # Enable/disable HTTP request logging
 
 ### Overview
 
-The database consists of 6 main tables with relationships:
+The database consists of 4 main tables with relationships:
 
 ```
 Admin (1) ──┬─── creates ───> User (N)
@@ -136,10 +135,7 @@ Admin (1) ──┬─── creates ───> User (N)
 User (N) ───┬─── makes ─────> UserRequest (N)
             └─── assigned ──> ProjectUser (Join)
 
-Project (N) ┬─── has ───────> ProjectUser (Join) ───> User (N)
-            └─── has ───────> ProjectDesignation (Join) ───> Designation (N)
-
-ProjectUser ─────> Designation (Optional)
+Project (N) ──── has ───────> ProjectUser (Join) ───> User (N)
 ```
 
 ### Admin Table
@@ -225,76 +221,27 @@ Stores projects created by admins.
 **Relations:**
 - Belongs to one `Admin` (creator)
 - Has many `ProjectUser` (users assigned to project)
-- Has many `ProjectDesignation` (designations assigned to project)
 
 ---
 
 ### ProjectUser Table (Join Table)
 
-Links users to projects with optional designations.
+Links users to projects.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | Integer | Primary Key, Auto-increment | Unique identifier |
 | `projectId` | Integer | Foreign Key (Project), Indexed | Project ID |
 | `userId` | Integer | Foreign Key (User), Indexed | User ID |
-| `designationId` | Integer | Foreign Key (Designation), Nullable, Indexed | Optional designation/role |
 | `assignedAt` | DateTime | Default: now() | Assignment timestamp |
 
 **Constraints:**
 - Unique constraint on `[projectId, userId]` - prevents duplicate assignments
 - Cascade delete on project and user
-- SetNull on designation (user stays in project if designation deleted)
 
 **Purpose:**
-- Links users to projects with optional roles
-- Allows users to have different roles in different projects
-- Designation must be assigned to project before assigning to user
-
----
-
-### Designation Table
-
-Stores job roles/titles that can be assigned to projects and users.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | Integer | Primary Key, Auto-increment | Unique identifier |
-| `name` | String | Required, Unique | Designation name (e.g., "Software Engineer") |
-| `description` | String | Nullable | Description of the designation |
-| `createdAt` | DateTime | Default: now() | Creation timestamp |
-| `updatedAt` | DateTime | Auto-updated | Last update timestamp |
-
-**Relations:**
-- Has many `ProjectDesignation` (can be assigned to many projects)
-- Has many `ProjectUser` (users with this designation)
-
-**Purpose:**
-- Defines job roles/titles in the system
-- Managed by admins only
-- Can be assigned to projects and then to users within those projects
-
----
-
-### ProjectDesignation Table (Join Table)
-
-Links designations to projects.
-
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| `id` | Integer | Primary Key, Auto-increment | Unique identifier |
-| `projectId` | Integer | Foreign Key (Project), Indexed | Project ID |
-| `designationId` | Integer | Foreign Key (Designation), Indexed | Designation ID |
-| `assignedAt` | DateTime | Default: now() | Assignment timestamp |
-
-**Constraints:**
-- Unique constraint on `[projectId, designationId]` - prevents duplicate assignments
-- Cascade delete on both project and designation
-
-**Purpose:**
-- Links designations to specific projects
-- Allows admins to define which roles are available in each project
-- Enables project-specific role management
+- Links users to projects
+- Tracks when users were assigned to projects
 
 ---
 
@@ -1411,8 +1358,6 @@ Returns the list of remaining users assigned to the project.
 
 ---
 
-### Assign Designation to Project
-
 Assign a designation to a project (admin only, must own the project).
 
 **Endpoint:** `POST /project/:id/assign-designation`
@@ -1618,9 +1563,10 @@ Authorization: Bearer <admin_access_token>
 
 > **Note:** This operation is idempotent. Removing a designation when the user has none will succeed without error.
 
+
 ---
 
-## Designation Management Endpoints
+## Authentication & Authorization
 
 > **Note:** All designation endpoints require admin authentication. Designations are used to define job roles/titles in the system.
 

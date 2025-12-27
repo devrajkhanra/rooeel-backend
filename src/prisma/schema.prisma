@@ -60,47 +60,20 @@ model Project {
   updatedAt   DateTime      @updatedAt
   admin       Admin         @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   users       ProjectUser[] // Many-to-many relation with users
-  designations ProjectDesignation[] // Many-to-many relation with designations
 
   @@index([createdBy])
   @@index([status])
 }
 
 model ProjectUser {
-  id            Int          @id @default(autoincrement())
-  projectId     Int
-  userId        Int
-  designationId Int?         // Optional designation assignment
-  assignedAt    DateTime     @default(now())
-  project       Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  designation   Designation? @relation(fields: [designationId], references: [id], onDelete: SetNull)
+  id         Int      @id @default(autoincrement())
+  projectId  Int
+  userId     Int
+  assignedAt DateTime @default(now())
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, userId]) // Prevent duplicate assignments
   @@index([projectId])
   @@index([userId])
-  @@index([designationId])
-}
-
-model Designation {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  projects    ProjectDesignation[] // Many-to-many relation with projects
-  projectUsers ProjectUser[]        // Users with this designation in projects
-}
-
-model ProjectDesignation {
-  id            Int         @id @default(autoincrement())
-  projectId     Int
-  designationId Int
-  assignedAt    DateTime    @default(now())
-  project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  designation   Designation @relation(fields: [designationId], references: [id], onDelete: Cascade)
-
-  @@unique([projectId, designationId]) // Prevent duplicate assignments
-  @@index([projectId])
-  @@index([designationId])
 }
