@@ -60,13 +60,22 @@ export class AuthService implements IAuthService {
     }
 
     async login(loginDto: LoginDto) {
-        const admin = await this.validateAdmin(loginDto.email, loginDto.password);
-        if (!admin) {
+        let user: any;
+
+        if (loginDto.role === 'admin') {
+            user = await this.validateAdmin(loginDto.email, loginDto.password);
+        } else if (loginDto.role === 'user') {
+            user = await this.validateUser(loginDto.email, loginDto.password);
+        }
+
+        if (!user) {
             throw new UnauthorizedException('Invalid credentials');
         }
-        const payload = { email: admin.email, sub: admin.id, role: 'admin' };
+
+        const payload = { email: user.email, sub: user.id, role: loginDto.role };
         return {
             access_token: this.jwtService.sign(payload),
+            user: { ...user, role: loginDto.role },
         };
     }
 

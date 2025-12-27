@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
@@ -88,5 +88,28 @@ export class UserService implements IUserService {
         return this.prisma.user.findUnique({
             where: { email },
         });
+    }
+
+    async resetPassword(id: number, adminId: number, password: string): Promise<User> {
+        const user = await this.findOne(id);
+        if (!user) {
+            throw new NotFoundException(`User with ID ${id} not found`);
+        }
+
+        // Verify that the user was created by this admin
+        if (user.createdBy !== adminId) {
+            throw new ForbiddenException('You can only reset passwords for users you created');
+        }
+
+        this.logger.debug(`Resetting password for user: ${user.email} (ID: ${id})`);
+        const hashedPassword = await this.passwordService.hash(password);
+
+        const updatedUser = await this.prisma.user.update({
+            where: { id },
+            data: { password: hashedPassword },
+        });
+
+        this.logger.log(`Password reset successfully for user: ${user.email} (ID: ${id}) by admin ID: ${adminId}`);
+        return updatedUser;
     }
 }

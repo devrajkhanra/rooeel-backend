@@ -26,14 +26,14 @@ export class RequestController {
     }
 
     @UseGuards(UserGuard)
-    @Get('my-requests')
+    @Get()
     findMyRequests(@Request() req) {
         const userId = req.user.userId;
         return this.requestService.findAllByUser(userId);
     }
 
     @UseGuards(AdminGuard)
-    @Get('admin-requests')
+    @Get('admin')
     findAdminRequests(@Request() req) {
         const adminId = req.user.userId;
         return this.requestService.findAllByAdmin(adminId);

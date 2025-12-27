@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, UseGua
 import { UserService } from './services/user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AdminGuard } from '../auth/guards/admin.guard';
 
 @Controller('user')
@@ -33,5 +34,15 @@ export class UserController {
     @Delete(':id')
     remove(@Param('id', ParseIntPipe) id: number) {
         return this.userService.remove(id);
+    }
+    @UseGuards(AdminGuard)
+    @Patch(':id/reset-password')
+    resetPassword(
+        @Param('id', ParseIntPipe) id: number,
+        @Request() req,
+        @Body() resetPasswordDto: ResetPasswordDto,
+    ) {
+        const adminId = req.user.userId;
+        return this.userService.resetPassword(id, adminId, resetPasswordDto.password);
     }
 }

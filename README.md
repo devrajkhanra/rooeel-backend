@@ -826,6 +826,50 @@ Authorization: Bearer <admin_access_token>
 
 ---
 
+### Reset User Password
+
+Reset a user's password (admin only, must be the creator of the user).
+
+**Endpoint:** `PATCH /user/:id/reset-password`
+
+**Authentication:** Required - Admin only
+
+**Headers:**
+```
+Authorization: Bearer <admin_access_token>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "password": "NewSecurePassword123"
+}
+```
+
+**Validation Rules:**
+- `password`: String, required, min 8 characters
+
+**Success Response (200):**
+```json
+{
+  "id": 5,
+  "firstName": "Alice",
+  "lastName": "Johnson",
+  "email": "alice@example.com",
+  "createdBy": 1,
+  "createdAt": "2025-12-26T10:00:00.000Z"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Validation failed
+- `401 Unauthorized` - Not authenticated
+- `403 Forbidden` - Not an admin or trying to reset password for a user created by another admin
+- `404 Not Found` - User not found
+
+---
+
 ## Request Management Endpoints
 
 ### Create Change Request
@@ -1119,10 +1163,7 @@ Authorization: Bearer <access_token>
           "lastName": "Johnson",
           "email": "alice@example.com"
         },
-        "designation": {
-          "id": 1,
-          "name": "Software Engineer"
-        },
+
         "assignedAt": "2025-12-26T10:30:00.000Z"
       }
     ]
@@ -1175,10 +1216,7 @@ Authorization: Bearer <access_token>
         "lastName": "Johnson",
         "email": "alice@example.com"
       },
-      "designation": {
-        "id": 1,
-        "name": "Software Engineer"
-      },
+
       "assignedAt": "2025-12-26T10:30:00.000Z"
     },
     {
@@ -1191,7 +1229,7 @@ Authorization: Bearer <access_token>
         "lastName": "Smith",
         "email": "bob@example.com"
       },
-      "designation": null,
+
       "assignedAt": "2025-12-26T11:00:00.000Z"
     }
   ]
@@ -1358,409 +1396,7 @@ Returns the list of remaining users assigned to the project.
 
 ---
 
-Assign a designation to a project (admin only, must own the project).
 
-**Endpoint:** `POST /project/:id/assign-designation`
-
-**Authentication:** Required - Admin only
-
-**Headers:**
-```
-Authorization: Bearer <admin_access_token>
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "designationId": 1
-}
-```
-
-**Validation Rules:**
-- `designationId`: Integer, required, must be a positive integer
-
-**Success Response (200):**
-```json
-{
-  "assignedDesignations": [
-    "Software Engineer",
-    "Team Lead",
-    "Senior Developer"
-  ]
-}
-```
-
-Returns the list of all designations currently assigned to the project.
-
-**Error Responses:**
-- `400 Bad Request` - Validation failed
-- `401 Unauthorized` - Not authenticated
-- `403 Forbidden` - Not an admin or not the project owner
-- `404 Not Found` - Project or designation not found
-- `409 Conflict` - Designation already assigned to this project
-
----
-
-### Remove Designation from Project
-
-Remove a designation from a project (admin only, must own the project).
-
-**Endpoint:** `DELETE /project/:id/remove-designation/:designationId`
-
-**Authentication:** Required - Admin only
-
-**Headers:**
-```
-Authorization: Bearer <admin_access_token>
-```
-
-**Success Response (200):**
-```json
-{
-  "assignedDesignations": [
-    "Software Engineer"
-  ]
-}
-```
-
-Returns the list of remaining designations assigned to the project.
-
-> **Note:** This operation is idempotent. Removing a designation that is not assigned will succeed without error.
-
-**Error Responses:**
-- `401 Unauthorized` - Not authenticated
-- `403 Forbidden` - Not an admin or not the project owner
-- `404 Not Found` - Project not found
-
----
-
-### Get Project Designations
-
-Get all designations assigned to a project.
-
-**Endpoint:** `GET /project/:id/designations`
-
-**Authentication:** Required
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Success Response (200):**
-```json
-[
-  {
-    "id": 1,
-    "name": "Software Engineer",
-    "description": "Develops software applications",
-    "assignedAt": "2025-12-26T12:00:00.000Z"
-  },
-  {
-    "id": 3,
-    "name": "Team Lead",
-    "description": "Leads development team",
-    "assignedAt": "2025-12-26T11:30:00.000Z"
-  }
-]
-```
-
-Returns all designations assigned to the project, ordered alphabetically by name.
-
-**Error Responses:**
-- `401 Unauthorized` - Not authenticated
-
----
-
-### Set User Designation in Project
-
-Assign a specific designation/role to a user within a project (admin only, must own the project).
-
-**Endpoint:** `PATCH /project/:id/user/:userId/designation`
-
-**Authentication:** Required - Admin only
-
-**Headers:**
-```
-Authorization: Bearer <admin_access_token>
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "designationId": 1
-}
-```
-
-**Validation Rules:**
-- `designationId`: Integer, required, must be a positive integer
-
-**Success Response (200):**
-```json
-{
-  "message": "Designation assigned successfully",
-  "user": {
-    "id": 5,
-    "firstName": "Alice",
-    "lastName": "Johnson",
-    "designation": "Software Engineer"
-  }
-}
-```
-
-**Error Responses:**
-- `400 Bad Request` - Designation not assigned to project
-- `401 Unauthorized` - Not authenticated
-- `403 Forbidden` - Not an admin or not the project owner
-- `404 Not Found` - Project, user, or designation not found
-
-> **Important Prerequisites:**
-> 1. User must be assigned to the project first (`POST /project/:id/assign-user`)
-> 2. Designation must be assigned to the project first (`POST /project/:id/assign-designation`)
-> 3. Only then can you assign the designation to the user
->
-> **Workflow Example:**
-> ```
-> 1. POST /project/2/assign-user { "userId": 5 }
-> 2. POST /project/2/assign-designation { "designationId": 1 }
-> 3. PATCH /project/2/user/5/designation { "designationId": 1 }
-> ```
-
----
-
-### Remove User Designation from Project
-
-Remove a user's designation/role from a project (admin only, must own the project).
-
-**Endpoint:** `DELETE /project/:id/user/:userId/designation`
-
-**Authentication:** Required - Admin only
-
-**Headers:**
-```
-Authorization: Bearer <admin_access_token>
-```
-
-**Success Response (200):**
-```json
-{
-  "message": "Designation removed successfully",
-  "user": {
-    "id": 5,
-    "firstName": "Alice",
-    "lastName": "Johnson",
-    "designation": null
-  }
-}
-```
-
-**Error Responses:**
-- `401 Unauthorized` - Not authenticated
-- `403 Forbidden` - Not an admin or not the project owner
-- `404 Not Found` - Project or user not found
-
-> **Note:** This operation is idempotent. Removing a designation when the user has none will succeed without error.
-
-
----
-
-## Authentication & Authorization
-
-> **Note:** All designation endpoints require admin authentication. Designations are used to define job roles/titles in the system.
-
-### Create Designation
-
-Create a new designation (admin only).
-
-**Endpoint:** `POST /designation`
-
-**Authentication:** Required - Admin only
-
-**Headers:**
-```
-Authorization: Bearer <admin_access_token>
-Content-Type: application/json
-```
-
-**Request Body:**
-```json
-{
-  "name": "Software Engineer",
-  "description": "Responsible for developing and maintaining software applications"
-}
-```
-
-**Validation Rules:**
-- `name`: String, required, min 2 characters, max 100 characters, unique
-- `description`: String, optional, min 10 characters, max 500 characters
-
-**Success Response (201):**
-```json
-{
-  "id": 1,
-  "name": "Software Engineer",
-  "description": "Responsible for developing and maintaining software applications",
-  "createdAt": "2025-12-26T10:00:00.000Z",
-  "updatedAt": "2025-12-26T10:00:00.000Z"
-}
-```
-
-**Error Responses:**
-- `400 Bad Request` - Validation failed
-- `401 Unauthorized` - Not authenticated
-- `403 Forbidden` - Not an admin
-- `409 Conflict` - Designation with this name already exists
-
----
-
-### Get All Designations
-
-Retrieve all designations (admin only).
-
-**Endpoint:** `GET /designation`
-
-**Authentication:** Required - Admin only
-
-**Headers:**
-```
-Authorization: Bearer <admin_access_token>
-```
-
-**Success Response (200):**
-```json
-[
-  {
-    "id": 1,
-    "name": "Software Engineer",
-    "description": "Responsible for developing and maintaining software applications",
-    "createdAt": "2025-12-26T10:00:00.000Z",
-    "updatedAt": "2025-12-26T10:00:00.000Z"
-  },
-  {
-    "id": 2,
-    "name": "Project Manager",
-    "description": "Oversees project planning and execution",
-    "createdAt": "2025-12-26T10:05:00.000Z",
-    "updatedAt": "2025-12-26T10:05:00.000Z"
-  }
-]
-```
-
-Designations are returned in alphabetical order by name.
-
-**Error Responses:**
-- `401 Unauthorized` - Not authenticated
-- `403 Forbidden` - Not an admin
-
----
-
-### Get Designation by ID
-
-Retrieve a specific designation by ID (admin only).
-
-**Endpoint:** `GET /designation/:id`
-
-**Authentication:** Required - Admin only
-
-**Headers:**
-```
-Authorization: Bearer <admin_access_token>
-```
-
-**Success Response (200):**
-```json
-{
-  "id": 1,
-  "name": "Software Engineer",
-  "description": "Responsible for developing and maintaining software applications",
-  "createdAt": "2025-12-26T10:00:00.000Z",
-  "updatedAt": "2025-12-26T10:00:00.000Z"
-}
-```
-
-**Error Responses:**
-- `401 Unauthorized` - Not authenticated
-- `403 Forbidden` - Not an admin
-- `404 Not Found` - Designation not found
-
----
-
-### Update Designation
-
-Update a designation (admin only).
-
-**Endpoint:** `PATCH /designation/:id`
-
-**Authentication:** Required - Admin only
-
-**Headers:**
-```
-Authorization: Bearer <admin_access_token>
-Content-Type: application/json
-```
-
-**Request Body (all fields optional):**
-```json
-{
-  "name": "Senior Software Engineer",
-  "description": "Leads development of complex software systems"
-}
-```
-
-**Validation Rules:**
-- `name`: String, min 2 characters, max 100 characters, unique (if provided)
-- `description`: String, min 10 characters, max 500 characters (if provided)
-
-**Success Response (200):**
-```json
-{
-  "id": 1,
-  "name": "Senior Software Engineer",
-  "description": "Leads development of complex software systems",
-  "createdAt": "2025-12-26T10:00:00.000Z",
-  "updatedAt": "2025-12-26T12:00:00.000Z"
-}
-```
-
-**Error Responses:**
-- `400 Bad Request` - Validation failed
-- `401 Unauthorized` - Not authenticated
-- `403 Forbidden` - Not an admin
-- `404 Not Found` - Designation not found
-- `409 Conflict` - Designation name already exists
-
----
-
-### Delete Designation
-
-Delete a designation (admin only).
-
-**Endpoint:** `DELETE /designation/:id`
-
-**Authentication:** Required - Admin only
-
-**Headers:**
-```
-Authorization: Bearer <admin_access_token>
-```
-
-**Success Response (200):**
-```json
-{
-  "message": "Designation deleted successfully"
-}
-```
-
-**Error Responses:**
-- `401 Unauthorized` - Not authenticated
-- `403 Forbidden` - Not an admin
-- `404 Not Found` - Designation not found
-
-> **Note:** Deleting a designation will set it to null for all users who have it assigned (SetNull cascade).
-
----
 
 ## Authentication & Authorization
 
