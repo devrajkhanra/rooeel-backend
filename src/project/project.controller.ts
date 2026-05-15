@@ -9,9 +9,12 @@ import {
     UseGuards,
     Request,
     ParseIntPipe,
+    UploadedFile,
+    UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ProjectService } from './services/project.service';
-import { CreateProjectDto } from './dto/create-project.dto';
+import { CreateProjectDto, ProjectFieldDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { AssignUserDto } from './dto/assign-user.dto';
 import { AdminGuard } from '../auth/guards/admin.guard';
@@ -82,5 +85,34 @@ export class ProjectController {
         const adminId = req.user.userId;
         const assignedUsers = await this.projectService.removeUser(id, userId, adminId);
         return { assignedUsers };
+    }
+
+    @UseGuards(AdminGuard)
+    @Post(':id/work-order')
+    @UseInterceptors(FileInterceptor('file'))
+    uploadWorkOrder(
+        @Param('id', ParseIntPipe) id: number,
+        @Request() req,
+        @UploadedFile() file: any,
+    ) {
+        const adminId = req.user.userId;
+        return this.projectService.uploadWorkOrder(id, adminId, file);
+    }
+
+    @UseGuards(AdminGuard)
+    @Patch(':id/fields')
+    updateFields(
+        @Param('id', ParseIntPipe) id: number,
+        @Request() req,
+        @Body() fields: ProjectFieldDto[],
+    ) {
+        const adminId = req.user.userId;
+        return this.projectService.updateFields(id, adminId, fields);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get(':id/fields')
+    getFields(@Param('id', ParseIntPipe) id: number) {
+        return this.projectService.getFields(id);
     }
 }

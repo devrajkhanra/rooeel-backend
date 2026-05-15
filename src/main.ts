@@ -6,11 +6,19 @@ import compression from 'compression';
 import { AppModule } from './app.module';
 import { CustomLogger } from './logger/logger.service';
 import { HttpLoggerInterceptor } from './logger/http-logger.interceptor';
+import * as path from 'path';
+import * as fs from 'fs';
 
 async function bootstrap() {
 
   const logger = new CustomLogger();
   logger.setContext('NestApplication');
+
+  // Ensure uploads directory exists
+  const uploadsDir = path.join(process.cwd(), 'uploads', 'work-orders');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
 
   const app = await NestFactory.create(AppModule, {
     logger: logger,

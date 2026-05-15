@@ -1,18 +1,25 @@
 import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateProjectDto } from '../dto/create-project.dto';
+import { CreateProjectDto, ProjectFieldDto } from '../dto/create-project.dto';
 import { UpdateProjectDto } from '../dto/update-project.dto';
 import { IProjectService, ProjectWithRelations } from '../interfaces/project.interface';
 import { CustomLogger } from '../../logger/logger.service';
-import { Project } from '@prisma/client';
+import { Project, ProjectField } from '@prisma/client';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class ProjectService implements IProjectService {
     private readonly logger: CustomLogger;
+    private readonly uploadDir = path.join(process.cwd(), 'uploads', 'work-orders');
 
     constructor(private readonly prisma: PrismaService) {
         this.logger = new CustomLogger();
         this.logger.setContext(ProjectService.name);
+        // Ensure upload directory exists
+        if (!fs.existsSync(this.uploadDir)) {
+            fs.mkdirSync(this.uploadDir, { recursive: true });
+        }
     }
 
     async create(adminId: number, createProjectDto: CreateProjectDto): Promise<Project> {
@@ -24,6 +31,16 @@ export class ProjectService implements IProjectService {
                 description: createProjectDto.description,
                 status: createProjectDto.status || 'active',
                 createdBy: adminId,
+                fields: createProjectDto.fields ? {
+                    create: createProjectDto.fields.map((f, index) => ({
+                        name: f.name,
+                        label: f.label,
+                        fieldType: f.fieldType,
+                        options: f.options ?? undefined,
+                        required: f.required || false,
+                        sortOrder: f.sortOrder ?? index,
+                    })),
+                } : undefined,
             },
         });
 
@@ -305,5 +322,84 @@ export class ProjectService implements IProjectService {
         this.logger.debug(`Returning ${userNames.length} remaining users for project ${projectId}`);
 
         return userNames;
+    }
+
+    async uploadWorkOrder(
+        projectId: number,
+        adminId: number,
+        file: any,
+    ): Promise<Project> {
+        const project = await this.findOne(projectId);
+
+        if (!project) {
+            throw new NotFoundException(`Project with ID ${projectId} not found`);
+        }
+
+        if (project.createdBy !== adminId) {
+            throw new ForbiddenException('You can only upload work orders to your own projects');
+        }
+
+        // Validate file type
+        if (!file.mimetype.includes('pdf')) {
+            throw new ConflictException('Only PDF files are allowed');
+        }
+
+        // Generate unique filename
+        const ext = path.extname(file.originalname);
+        const filename = `project-${projectId}-${Date.now()}${ext}`;
+        const filepath = path.join(this.uploadDir, filename);
+
+        // Write file
+        fs.writeFileSync(filepath, file.buffer);
+
+        // Update project with file path
+        const updatedProject = await this.prisma.project.update({
+            where: { id: projectId },
+            data: { workOrderPdf: `/uploads/work-orders/${filename}` },
+        });
+
+        this.logger.log(`Work order PDF uploaded for project ${project.name} (ID: ${projectId})`);
+        return updatedProject;
+    }
+
+    async updateFields(
+        projectId: number,
+        adminId: number,
+        fields: ProjectFieldDto[],
+    ): Promise<ProjectField[]> {
+        const project = await this.findOne(projectId);
+
+        if (!project) {
+            throw new NotFoundException(`Project with ID ${projectId} not found`);
+        }
+
+        if (project.createdBy !== adminId) {
+            throw new ForbiddenException('You can only update fields for your own projects');
+        }
+
+        // Delete existing fields and create new ones
+        await this.prisma.projectField.deleteMany({ where: { projectId } });
+
+        const createdFields = await this.prisma.projectField.createManyAndReturn({
+            data: fields.map((f, index) => ({
+                projectId,
+                name: f.name,
+                label: f.label,
+                fieldType: f.fieldType,
+                options: f.options ?? undefined,
+                required: f.required || false,
+                sortOrder: f.sortOrder ?? index,
+            })),
+        });
+
+        this.logger.log(`Fields updated for project ${project.name} (ID: ${projectId})`);
+        return createdFields;
+    }
+
+    async getFields(projectId: number): Promise<ProjectField[]> {
+        return this.prisma.projectField.findMany({
+            where: { projectId },
+            orderBy: { sortOrder: 'asc' },
+        });
     }
 }
