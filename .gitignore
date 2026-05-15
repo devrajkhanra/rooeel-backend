@@ -2,6 +2,7 @@
 /dist
 /node_modules
 /build
+/graphify-out
 
 # Logs
 logs

@@ -10,12 +10,14 @@ import { LoggerModule } from './logger/logger.module';
 import { RequestModule } from './request/request.module';
 import { ProjectModule } from './project/project.module';
 import { TaskModule } from './task/task.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    RedisModule,
     AdminModule,
     PrismaModule,
     AuthModule,

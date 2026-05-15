@@ -1,0 +1,42 @@
+# Dependencies (installed fresh inside the image)
+node_modules/
+
+# Build output (produced by the builder stage)
+dist/
+build/
+
+# Git
+.git/
+.gitignore
+
+# Environment files — NEVER bake secrets into the image
+.env
+.env.*
+!.env.example
+
+# Test & coverage artifacts
+coverage/
+.nyc_output/
+test/
+
+# IDE / OS noise
+.vscode/
+.idea/
+.DS_Store
+*.launch
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Docker itself (avoid recursive context)
+Dockerfile*
+docker-compose*
+
+# TypeScript source maps (not needed at runtime)
+*.js.map
+
+# Temp
+.temp/
+.tmp/

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(graphify)",
+      "Bash(python *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(Select-Object -First 30)",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

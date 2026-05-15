@@ -1,0 +1,31 @@
+# ─────────────────────────────────────────────────────────────
+# Development overrides — extends docker-compose.yml
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# ─────────────────────────────────────────────────────────────
+
+services:
+  api:
+    build:
+      target: builder          # use the builder stage (includes devDependencies + ts-node)
+    container_name: rooeel-api-dev
+    environment:
+      NODE_ENV: development
+      ENABLE_HTTP_LOGGING: "true"
+    # Mount source code so nest --watch hot-reloads inside the container
+    volumes:
+      - .:/app
+      - /app/node_modules       # anonymous volume so container's node_modules are not overwritten
+    command: ["npm", "run", "start:dev"]
+    # Override the healthcheck CMD — dev server may start slower
+    healthcheck:
+      start_period: 60s
+
+  db:
+    container_name: rooeel-db-dev
+    ports:
+      - "5432:5432"             # expose to host for Prisma Studio / TablePlus
+
+  redis:
+    container_name: rooeel-redis-dev
+    ports:
+      - "6379:6379"             # expose to host for RedisInsight / redis-cli
