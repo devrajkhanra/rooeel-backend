@@ -11,6 +11,7 @@ import { RequestModule } from './request/request.module';
 import { ProjectModule } from './project/project.module';
 import { TaskModule } from './task/task.module';
 import { RedisModule } from './redis/redis.module';
+import { PasswordResetModule } from './password-reset/password-reset.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { RedisModule } from './redis/redis.module';
     RequestModule,
     ProjectModule,
     TaskModule,
+    PasswordResetModule,
   ],
   controllers: [AppController],
   providers: [AppService],

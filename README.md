@@ -205,6 +205,7 @@ Copy `.env.example` to `.env` before starting. All variables are listed in `.env
 | `RESEND_API_KEY` | Resend API key for sending emails | — | **Yes** |
 | `RESEND_FROM_NAME` | From name for outgoing emails | `Rooeel` | No |
 | `RESEND_FROM_EMAIL` | From email address (verified domain) | `onboarding@resend.dev` | No |
+| `FRONTEND_URL` | Frontend URL for password reset links | `http://localhost:3000` | No |
 
 > **Security note**: Never commit `.env` to version control. The `.gitignore` already excludes it.
 
@@ -697,7 +698,7 @@ There are two dedicated password flows:
 | Flow | Who submits | Endpoint | Auth |
 |------|------------|----------|------|
 | **Password Change** | Logged-in user (knows current password) | `POST /request` | User JWT |
-| **Forgot Password / Reset** | Anyone who knows their email | `POST /request/forgot-password` | None |
+| **Forgot Password / Reset** | Anyone who knows their email | `POST /password-reset/forgot-password` | None |
 
 For **both** password flows the admin actions the request by generating a random password via `POST /request/:id/generate-password`. The plain-text password is returned once — admin must share it with the user.
 
@@ -745,39 +746,67 @@ curl -X POST http://localhost:5000/request \
 
 ---
 
-### POST /request/forgot-password — Forgot Password (Public)
+### POST /password-reset/forgot-password — Forgot Password (Public)
 
 **Auth:** None required — fully public endpoint
 
-User provides their email address. The system finds the admin who created that account and creates a `password_reset` request. The admin can then generate a new password.
+User provides their email address. The system generates a secure reset token and sends a password reset link to their email.
 
 ```json
 { "email": "user@example.com" }
 ```
 
-**Success (201):**
+**Success (200):**
 ```json
-{
-  "id": 3,
-  "requestType": "password_reset",
-  "status": "pending",
-  "userId": 2,
-  "adminId": 1,
-  "createdAt": "2026-05-14T18:27:30.000Z"
-}
+{ "message": "If an account exists with this email, a password reset link has been sent." }
 ```
 
 **Behaviour:**
-- If a `pending` password_reset already exists for this user, it returns the existing request (no duplicate created)
-- `requestedValue` is always stored as `[HIDDEN]` — the admin generates the password, not the user
+- Always returns success message (prevents user enumeration)
+- Reset link is valid for 1 hour
+- Previous unused reset tokens are invalidated when a new request is made
+- Link format: `{FRONTEND_URL}/reset-password?token={token}`
 
-**Errors:** `404` No account with this email | `400` Account has no assigned admin
+**Errors:** None (always returns success message)
 
 ```bash
 # Forgot password — no token needed
-curl -X POST http://localhost:5000/request/forgot-password \
+curl -X POST http://localhost:5000/password-reset/forgot-password \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com"}'
+```
+
+---
+
+### POST /password-reset/reset — Reset Password with Token
+
+**Auth:** None required — fully public endpoint
+
+User submits the reset token (from email link) along with their new password.
+
+```json
+{
+  "token": "abc123def456...",
+  "newPassword": "SecurePassword123"
+}
+```
+
+**Success (200):**
+```json
+{ "message": "Password has been reset successfully. You can now log in with your new password." }
+```
+
+**Errors:**
+- `400` Token has already been used
+- `400` Token has expired
+- `404` Invalid token
+
+**Frontend integration:**
+```javascript
+// Extract token from URL and call reset endpoint
+const params = new URLSearchParams(window.location.search);
+const token = params.get('token');
+// POST /password-reset/reset with token and newPassword
 ```
 
 ---

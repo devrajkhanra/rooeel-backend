@@ -33,6 +33,18 @@ model User {
   assignedTasks Task[]    // Tasks assigned to this user
 }
 
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  email     String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+  @@index([token])
+}
+
 model UserRequest {
   id             Int      @id @default(autoincrement())
   userId         Int

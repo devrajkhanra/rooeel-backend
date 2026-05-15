@@ -6,7 +6,10 @@
       "Bash(npm install *)",
       "Bash(npm run *)",
       "Bash(Select-Object -First 30)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(npx prisma *)",
+      "Bash(docker compose exec *)",
+      "Bash(docker compose ps *)"
     ]
   }
 }

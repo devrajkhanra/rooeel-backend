@@ -16,6 +16,11 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+      # Pass Resend config to container
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      RESEND_FROM_NAME: ${RESEND_FROM_NAME}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL}
+      FRONTEND_URL: ${FRONTEND_URL}
     ports:
       - "5000:5000"
     depends_on:
