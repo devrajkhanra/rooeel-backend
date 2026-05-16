@@ -6,17 +6,20 @@
 services:
   api:
     build:
-      target: builder          # use the builder stage (includes devDependencies + ts-node)
+      context: .
+      dockerfile: Dockerfile
+      target: builder
     container_name: rooeel-api-dev
     environment:
       NODE_ENV: development
       ENABLE_HTTP_LOGGING: "true"
-    # Mount source code so nest --watch hot-reloads inside the container
+      DATABASE_URL: postgresql://rooeel:rooeel_pass@db:5432/rooeel_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     volumes:
       - .:/app
-      - /app/node_modules       # anonymous volume so container's node_modules are not overwritten
-    command: ["npx", "ts-node", "-r", "tsconfig-paths/register", "src/main.ts"]
-    # Override the healthcheck CMD — dev server may start slower
+      - /app/node_modules
+    command: ["sh", "-c", "npm install && npx nest start --watch"]
     healthcheck:
       start_period: 60s
 

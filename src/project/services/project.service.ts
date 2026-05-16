@@ -74,6 +74,9 @@ export class ProjectService implements IProjectService {
                             },
                         },
                     },
+                    fields: {
+                        orderBy: { sortOrder: 'asc' },
+                    },
                 },
                 orderBy: { createdAt: 'desc' },
             });
@@ -108,6 +111,9 @@ export class ProjectService implements IProjectService {
                             },
                         },
                     },
+                    fields: {
+                        orderBy: { sortOrder: 'asc' },
+                    },
                 },
                 orderBy: { createdAt: 'desc' },
             });
@@ -137,6 +143,9 @@ export class ProjectService implements IProjectService {
                             },
                         },
                     },
+                },
+                fields: {
+                    orderBy: { sortOrder: 'asc' },
                 },
             },
         });
