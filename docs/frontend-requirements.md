@@ -64,7 +64,7 @@
 | DELETE /project/:id | project.service.ts: deleteProject() | - | ⏳ |
 | POST /project/:id/assign-user | project.service.ts: assignUser() | UserAssignmentModal.tsx | ✅ |
 | DELETE /project/:id/remove-user/:userId | project.service.ts: removeUser() | UserAssignmentModal.tsx | ✅ |
-| POST /project/:id/work-order | project.service.ts: uploadWorkOrder() | ProjectDetailPage.tsx | ⏳ |
+| POST /project/:id/work-order | project.service.ts: uploadWorkOrder() | CreateProjectPage.tsx | ✅ |
 | GET /project/:id/fields | project.service.ts: getProjectFields() | ProjectDetailPage.tsx | ✅ |
 | PUT /project/:id/fields | project.service.ts: updateProjectFields() | - | ⏳ |
 
