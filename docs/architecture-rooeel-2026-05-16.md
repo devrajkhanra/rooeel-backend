@@ -333,6 +333,23 @@ User (1) ───< Task (assignedTo)
 | FR-012 | Password reset via email token | Implemented |
 | FR-013 | Role-based access control | Implemented |
 | FR-014 | HTTP request logging | Implemented |
+| FR-015 | Work Order PDF upload | Implemented |
+| FR-016 | View/Download Work Order PDF | Implemented |
+
+---
+
+## 11. File Storage
+
+| Feature | Implementation |
+|---------|----------------|
+| Storage Type | Local file system (uploads/work-orders/) |
+| Access | Static file serving via NestJS ServeStaticModule |
+| Route | /uploads/* → ./uploads/ |
+| Validation | PDF only, max size configurable |
+| Future Migration | Can migrate to AWS S3 / Cloudflare R2 without API changes |
+
+**Current file types:**
+- Work Order PDFs (uploaded during project creation or via `/project/:id/work-order`)
 
 ---
 

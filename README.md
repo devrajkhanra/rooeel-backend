@@ -243,6 +243,22 @@ This endpoint is used by Docker Compose health checks and cloud load balancers (
 
 ---
 
+## Static File Serving
+
+The API serves uploaded files from the `/uploads` directory at the `/uploads` route.
+
+**Currently supported uploads:**
+- Work Order PDFs (`/uploads/work-orders/*.pdf`)
+
+**Example:** If a project has `workOrderPdf: "/uploads/work-orders/project-1-1234567890.pdf"`, the file can be accessed at:
+```
+GET http://localhost:5000/uploads/work-orders/project-1-1234567890.pdf
+```
+
+**File storage location:** `uploads/work-orders/` in the container (mapped to `./uploads` in docker-compose.yml)
+
+---
+
 ## Database Setup
 
 Prisma manages all schema migrations. In Docker, **migrations run automatically** before the API starts (`prisma migrate deploy`).
@@ -1065,6 +1081,22 @@ For `select` type, provide `options` array with `value` and `label` objects.
 ### DELETE /project/:id/remove-user/:userId — Remove User from Project
 
 **Auth:** Admin required. `404` if assignment not found.
+
+**Success Response:**
+```json
+{
+  "id": 1,
+  "name": "My Project",
+  "description": "Optional description",
+  "status": "active",
+  "workOrderPdf": null,
+  "createdBy": 1,
+  "createdAt": "2026-05-16T00:00:00.000Z",
+  "updatedAt": "2026-05-16T00:00:00.000Z",
+  "fields": [...],
+  "admin": { "id": 1, "firstName": "John", "lastName": "Doe", "email": "john@example.com" }
+}
+```
 
 ---
 

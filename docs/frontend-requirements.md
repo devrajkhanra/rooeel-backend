@@ -150,10 +150,8 @@ src/components/
 ```
 src/components/
 ├── project/
-│   ├── ProjectForm.tsx         ⏳ (create/edit project)
-│   ├── ProjectFieldEditor.tsx  ⏳ (dynamic fields)
-│   ├── WorkOrderViewer.tsx     ⏳ (view PDF)
-│   └── TaskCard.tsx           ⏳
+│   ├── ProjectForm.tsx         ⏳ (create/edit project - use CreateProjectPage)
+│   ├── TaskCard.tsx           ⏳
 ├── task/
 │   ├── TaskList.tsx           ⏳
 │   ├── TaskForm.tsx           ⏳
@@ -165,6 +163,8 @@ src/components/
     ├── Sidebar.tsx            ⏳ (if needed)
     └── Header.tsx             ⏳ (if needed)
 ```
+
+> **Note:** Work order PDF viewing is implemented in ProjectDetailPage (view + download buttons). Upload is in CreateProjectPage.
 
 ---
 
@@ -178,13 +178,14 @@ src/components/
 | SignupPage | /signup | ✅ |
 | ResetPasswordPage | /reset-password | ✅ |
 | DashboardPage | /dashboard | ✅ |
-| ProjectDetailPage | /projects/:id | ✅ |
+| ProjectDetailPage | /projects/:id | ✅ (includes work order PDF viewing) |
 | AdminEditPage | /admin/edit | ✅ |
 | AdminRequestsPage | /admin/requests | ✅ |
 | UserListPage | /users | ✅ |
 | UserProjectsPage | /my-projects | ✅ |
 | MyRequestsPage | /my-requests | ✅ |
 | NotFoundPage | /* | ✅ |
+| CreateProjectPage | /admin/projects/new | ✅ (includes work order PDF upload) |
 
 ### Not Yet Implemented
 
