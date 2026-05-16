@@ -15,7 +15,10 @@
       "Bash(docker compose *)",
       "Bash(docker exec rooeel-api-dev *)",
       "Bash(curl -s http://localhost:5000/health)",
-      "Bash(docker stop *)"
+      "Bash(docker stop *)",
+      "Skill(system-architect)",
+      "Skill(frontend-design)",
+      "Bash(select-string -pattern \"rooeel|react|frontend\")"
     ]
   }
 }
