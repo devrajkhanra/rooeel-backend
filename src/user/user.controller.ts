@@ -17,16 +17,19 @@ export class UserController {
         return this.userService.create(createUserDto, adminId);
     }
 
+    @UseGuards(AdminGuard)
     @Get()
     findAll() {
         return this.userService.findAll();
     }
 
+    @UseGuards(AdminGuard)
     @Get(':id')
     findOne(@Param('id', ParseIntPipe) id: number) {
         return this.userService.findOne(id);
     }
 
+    @UseGuards(AdminGuard)
     @Patch(':id')
     update(@Param('id', ParseIntPipe) id: number, @Body() updateUserDto: UpdateUserDto) {
         return this.userService.update(id, updateUserDto);
@@ -54,6 +57,7 @@ export class UserController {
         return this.userService.changeMyPassword(userId, body.currentPassword, body.newPassword);
     }
 
+    @UseGuards(AdminGuard)
     @Delete(':id')
     remove(@Param('id', ParseIntPipe) id: number) {
         return this.userService.remove(id);

@@ -722,14 +722,17 @@ Deletes an admin. Cascades to associated users and projects. `404` if not found.
 
 ### GET /user — List Users
 
-**Auth:** Required  
-Admin sees all users. User sees only themselves.
+**Auth:** Admin only
+
+Returns all users in the system.
 
 ---
 
 ### GET /user/:id — Get User
 
-**Auth:** Required. Returns user by ID. `404` if not found.
+**Auth:** Admin only
+
+Returns user by ID. `404` if not found.
 
 ---
 
@@ -755,6 +758,36 @@ Admin sees all users. User sees only themselves.
 ```
 
 **Errors:** `403` Admin did not create this user | `404` User not found
+
+---
+
+### PATCH /user/me/profile — Update Own Profile
+
+**Auth:** User only
+
+Allows an authenticated user to update their own firstName and lastName.
+
+**Request Body:**
+```json
+{ "firstName": "NewName", "lastName": "NewLastName" }
+```
+
+**Note:** Email changes require admin approval via Request system.
+
+---
+
+### PATCH /user/me/change-password — Change Own Password
+
+**Auth:** User only
+
+Allows an authenticated user to change their own password.
+
+**Request Body:**
+```json
+{ "currentPassword": "OldPass123", "newPassword": "NewPass456" }
+```
+
+**Errors:** `400` Invalid current password | `401` Not authenticated
 
 ---
 
