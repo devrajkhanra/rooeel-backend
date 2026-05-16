@@ -560,9 +560,13 @@ Creates a new admin account. No authentication required.
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresIn": 900,
   "admin": { "id": 1, "firstName": "John", "lastName": "Doe", "email": "admin@example.com" }
 }
 ```
+
+**Note:** The `refresh_token` is also set as an httpOnly cookie (7-day expiry).
 
 **Errors:** `400` Validation failed | `409` Email already exists
 
@@ -593,11 +597,34 @@ Authenticates admin or user and returns a JWT token.
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresIn": 900,
   "user": { "id": 1, "firstName": "John", "email": "admin@example.com", "role": "admin" }
 }
 ```
 
+**Note:** The `refresh_token` is also set as an httpOnly cookie (7-day expiry).
+
 **Errors:** `400` Validation | `401` Invalid credentials
+
+---
+
+### POST /auth/refresh — Refresh Access Token
+
+**Auth:** Not required (uses refresh token from cookie)
+
+Refreshes the access token using the refresh token from the httpOnly cookie.
+
+**Success (200):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresIn": 900
+}
+```
+
+**Note:** This also rotates the refresh token (old one is invalidated, new one issued).
+
+**Errors:** `401` Invalid or expired refresh token
 
 ---
 
@@ -605,19 +632,43 @@ Authenticates admin or user and returns a JWT token.
 
 **Auth:** Required
 
-Returns `{ "message": "Logged out successfully" }`. Token invalidation is client-side.
+Invalidates the refresh token in the database and clears the refresh token cookie.
+
+**Success (200):**
+```json
+{
+  "message": "Logout successful"
+}
+```
 
 ---
 
 ### POST /auth/user/login — User Login
 
-Same as `/auth/login` but for user role.
+Same as `/auth/login` but for user role. Returns access_token + sets refresh_token cookie.
+
+**Success (200):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiresIn": 900
+}
+```
 
 ---
 
 ### POST /auth/user/logout — User Logout
 
 **Auth:** Required (user token)
+
+Invalidates the refresh token in the database and clears the refresh token cookie.
+
+**Success (200):**
+```json
+{
+  "message": "Logout successful"
+}
+```
 
 ---
 
@@ -1093,21 +1144,67 @@ For `form` type, include `formSchema`:
 
 ## Authentication & Authorization
 
-JWT tokens are signed with `JWT_SECRET` and expire per `JWT_EXPIRY` (default 7 days).
+The API uses JWT (JSON Web Tokens) with a dual-token system: **Access Token** for API requests and **Refresh Token** for maintaining sessions.
 
-**Token payload:**
-```json
-{ "sub": 1, "email": "user@example.com", "role": "admin" }
+### Token Configuration
+
+| Token Type | Expiry | Storage | Purpose |
+|------------|--------|---------|---------|
+| Access Token | 15 minutes (`JWT_ACCESS_EXPIRY`) | Client (Authorization header) | API authentication |
+| Refresh Token | 7 days (`JWT_REFRESH_EXPIRY`) | httpOnly Cookie | Session maintenance |
+
+### Environment Variables
+
+```env
+JWT_SECRET=your-secure-secret-key
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY=7d
 ```
 
-**Guards:**
-- `JwtAuthGuard` — Verifies the JWT is valid and not expired
+### Token Payload
+
+```json
+{
+  "sub": 1,
+  "email": "user@example.com",
+  "role": "admin",
+  "jti": "unique-token-id",
+  "type": "access"
+}
+```
+
+### Guards
+
+- `JwtAuthGuard` — Verifies the JWT is valid, not expired, and not blacklisted
 - Role checks are performed inside service methods based on the `role` in the token payload
 
-**Token usage:**
+### Token Usage
+
+**Access Token (Authorization header):**
 ```
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
+
+**Refresh Token (Automatic):**
+- Stored in httpOnly cookie on login
+- Automatically sent with API requests
+- Use `/auth/refresh` endpoint to get new access token when expired
+
+### Authentication Flow
+
+```
+1. POST /auth/login → Returns access_token + refresh_token (cookie)
+2. API Requests → Use access_token in Authorization header
+3. Access Expired → POST /auth/refresh → New access_token + rotated refresh_token
+4. POST /auth/logout → Clears cookie + revokes refresh token in database
+```
+
+### Security Features
+
+- Token blacklist via Redis for immediate logout revocation
+- Token rotation on refresh (old refresh token is revoked)
+- Refresh tokens stored in database with expiry tracking
+- httpOnly cookies prevent XSS attacks on refresh tokens
 
 ---
 

@@ -128,3 +128,19 @@ model Task {
   @@index([projectId])
   @@index([assignedTo])
 }
+
+model RefreshToken {
+  id        Int       @id @default(autoincrement())
+  token     String    @unique
+  userId    Int
+  userType  String    // 'admin' or 'user'
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([userType])
+  @@index([token])
+  @@index([expiresAt])
+}

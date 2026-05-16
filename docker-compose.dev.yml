@@ -15,7 +15,7 @@ services:
     volumes:
       - .:/app
       - /app/node_modules       # anonymous volume so container's node_modules are not overwritten
-    command: ["npm", "run", "start:dev"]
+    command: ["npx", "ts-node", "-r", "tsconfig-paths/register", "src/main.ts"]
     # Override the healthcheck CMD — dev server may start slower
     healthcheck:
       start_period: 60s
