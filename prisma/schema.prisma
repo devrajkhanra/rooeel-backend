@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+}
+
+enum ProjectStatus {
+  TENDERING
+}
+
+enum MemberStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+}
+
+enum RefreshSessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum DocumentStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum TenderStageType {
+  TENDER_RECEIVED
+  SITE_VISIT
+  PREBID_QUERY
+  TENDER_SUBMISSION
+  CLARIFICATION
+  AUCTION
+  NEGOTIATION
+  LOI_AWARDED
+}
+
+enum TenderStageEventType {
+  TENDER_RECEIVED
+  SITE_VISIT
+  PREBID_QUERY_SENT
+  PREBID_QUERY_RESPONSE
+  TENDER_TECHNICAL_SUBMISSION
+  TENDER_PRICE_SUBMISSION
+  CLARIFICATION_SENT
+  CLARIFICATION_RECEIVED
+  AUCTION
+  NEGOTIATION
+  LOI_AWARDED
+}
+
+enum TenderStageStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  firstName    String
+  lastName     String
+  passwordHash String
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  memberships     ProjectMember[]
+  refreshSessions  RefreshSession[]
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  status      ProjectStatus @default(TENDERING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  configuration ProjectConfiguration?
+  memberships   ProjectMember[]
+  roles         ProjectRole[]
+  tenderStages  ProjectTenderStage[]
+  tenderStageEvents ProjectTenderStageEvent[]
+  documents     Document[]
+  documentAttachments DocumentAttachment[]
+}
+
+model ProjectConfiguration {
+  id        String   @id @default(cuid())
+  projectId  String   @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ProjectTenderStage {
+  id          String            @id @default(cuid())
+  projectId   String
+  stage       TenderStageType
+  sequence    Int
+  status      TenderStageStatus @default(NOT_STARTED)
+  note        String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  skippedAt   DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  events  ProjectTenderStageEvent[]
+
+  @@unique([projectId, stage])
+  @@unique([projectId, sequence])
+  @@index([projectId, sequence])
+  @@index([projectId, status])
+}
+
+model ProjectTenderStageEvent {
+  id        String               @id @default(cuid())
+  projectId String
+  stageId   String
+  eventType TenderStageEventType
+  eventDate DateTime
+  note      String?
+  sequence  Int
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  project Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stage   ProjectTenderStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@unique([stageId, sequence])
+  @@index([projectId, stageId])
+  @@index([projectId, eventType])
+  @@index([projectId, eventDate])
+}
+
+model ProjectMember {
+  id             String       @id @default(cuid())
+  projectId      String
+  userId         String
+  roleId         String
+  departmentName String?
+  designation    String?
+  status         MemberStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role    ProjectRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@index([projectId, roleId])
+}
+
+model ProjectRole {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  memberships ProjectMember[]
+  permissions RolePermission[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  role       ProjectRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model RefreshSession {
+  id            String               @id @default(cuid())
+  userId        String
+  tokenHash     String               @unique
+  status        RefreshSessionStatus @default(ACTIVE)
+  userAgent     String?
+  ipAddress     String?
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  createdAt     DateTime             @default(now())
+  lastRotatedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([expiresAt])
+}
+
+model Document {
+  id          String         @id @default(cuid())
+  projectId   String
+  ownerType   String
+  ownerId     String
+  title       String
+  description String?
+  documentDate DateTime?
+  status      DocumentStatus @default(ACTIVE)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  attachments DocumentAttachment[]
+
+  @@index([projectId, ownerType, ownerId])
+  @@index([projectId, status])
+}
+
+model DocumentAttachment {
+  id           String   @id @default(cuid())
+  projectId    String
+  documentId   String
+  objectKey    String   @unique
+  fileName     String
+  contentType  String
+  sizeBytes    Int?
+  uploadedById String?
+  uploadedAt   DateTime @default(now())
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, documentId])
+  @@index([projectId, uploadedAt])
+}
