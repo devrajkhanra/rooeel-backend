@@ -14,6 +14,7 @@ import { AuthModule } from './auth/auth.module';
 import { ProjectsModule } from './projects/projects.module';
 import { AuthorizationModule } from './authorization/authorization.module';
 import { DocumentsModule } from './documents/documents.module';
+import { TenderingModule } from './tendering/tendering.module';
 import { LoggingInterceptor } from './common/logging.interceptor';
 
 @Module({
@@ -33,6 +34,7 @@ import { LoggingInterceptor } from './common/logging.interceptor';
     AuthModule,
     ProjectsModule,
     DocumentsModule,
+    TenderingModule,
   ],
   controllers: [AppController],
   providers: [

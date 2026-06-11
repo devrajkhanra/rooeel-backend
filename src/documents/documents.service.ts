@@ -206,8 +206,16 @@ export class DocumentsService {
       return;
     }
 
+    if (ownerType === 'PROJECT_TENDER_STAGE_EVENT') {
+      await this.prisma.projectTenderStageEvent.findFirstOrThrow({
+        where: { id: ownerId, projectId },
+      });
+      return;
+    }
+
     throw new BadRequestException('Unsupported document owner type.');
   }
+
 
   private buildObjectKey(
     projectId: string,

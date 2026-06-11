@@ -19,7 +19,7 @@ export class CreateDocumentInput {
   @IsOptional()
   description?: string;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   @IsOptional()
   @IsDateString()
   documentDate?: string;
@@ -39,7 +39,7 @@ export class UpdateDocumentInput {
   @IsOptional()
   description?: string;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   @IsOptional()
   @IsDateString()
   documentDate?: string;
