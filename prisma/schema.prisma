@@ -17,6 +17,15 @@ enum ProjectStatus {
   TENDERING
 }
 
+enum ProjectModuleType {
+  TENDERING
+}
+
+enum ProjectModuleStatus {
+  ACTIVE
+  ARCHIVED
+}
+
 enum MemberStatus {
   ACTIVE
   INVITED
@@ -66,6 +75,18 @@ enum TenderStageStatus {
   SKIPPED
 }
 
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  STAGE_START
+  STAGE_COMPLETE
+  STAGE_SKIP
+  ATTACHMENT_UPLOAD
+  ATTACHMENT_DELETE
+  ATTACHMENT_RENAME
+}
+
 model User {
   id           String     @id @default(cuid())
   email        String     @unique
@@ -77,7 +98,8 @@ model User {
   updatedAt    DateTime   @updatedAt
 
   memberships     ProjectMember[]
-  refreshSessions  RefreshSession[]
+  refreshSessions RefreshSession[]
+  auditLogs       AuditLog[]
 }
 
 model Project {
@@ -88,22 +110,42 @@ model Project {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  configuration ProjectConfiguration?
-  memberships   ProjectMember[]
-  roles         ProjectRole[]
-  tenderStages  ProjectTenderStage[]
-  tenderStageEvents ProjectTenderStageEvent[]
-  documents     Document[]
+  configuration       ProjectConfiguration?
+  modules             ProjectModule[]
+  memberships         ProjectMember[]
+  roles               ProjectRole[]
+  tenderStages        ProjectTenderStage[]
+  tenderStageEvents   ProjectTenderStageEvent[]
+  documents           Document[]
   documentAttachments DocumentAttachment[]
+  auditLogs           AuditLog[]
 }
 
 model ProjectConfiguration {
   id        String   @id @default(cuid())
-  projectId  String   @unique
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  projectId String   @unique
+  notes     String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ProjectModule {
+  id          String              @id @default(cuid())
+  projectId   String
+  type        ProjectModuleType
+  name        String
+  description String?
+  status      ProjectModuleStatus @default(ACTIVE)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, type])
+  @@index([projectId, status])
 }
 
 model ProjectTenderStage {
@@ -119,7 +161,7 @@ model ProjectTenderStage {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project Project                   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   events  ProjectTenderStageEvent[]
 
   @@unique([projectId, stage])
@@ -133,6 +175,7 @@ model ProjectTenderStageEvent {
   projectId String
   stageId   String
   eventType TenderStageEventType
+  title     String?
   eventDate DateTime
   note      String?
   sequence  Int
@@ -224,22 +267,23 @@ model RefreshSession {
 }
 
 model Document {
-  id          String         @id @default(cuid())
-  projectId   String
-  ownerType   String
-  ownerId     String
-  title       String
-  description String?
+  id           String         @id @default(cuid())
+  projectId    String
+  ownerType    String
+  ownerId      String
+  title        String
+  description  String?
   documentDate DateTime?
-  status      DocumentStatus @default(ACTIVE)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  status       DocumentStatus @default(ACTIVE)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   project     Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
   attachments DocumentAttachment[]
 
   @@index([projectId, ownerType, ownerId])
   @@index([projectId, status])
+  @@index([ownerId])
 }
 
 model DocumentAttachment {
@@ -258,4 +302,22 @@ model DocumentAttachment {
 
   @@index([projectId, documentId])
   @@index([projectId, uploadedAt])
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  projectId  String?
+  userId     String?
+  action     AuditAction
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, createdAt])
+  @@index([entityType, entityId])
+  @@index([userId, createdAt])
 }

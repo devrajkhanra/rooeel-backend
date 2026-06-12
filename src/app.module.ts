@@ -15,6 +15,8 @@ import { ProjectsModule } from './projects/projects.module';
 import { AuthorizationModule } from './authorization/authorization.module';
 import { DocumentsModule } from './documents/documents.module';
 import { TenderingModule } from './tendering/tendering.module';
+import { AuditModule } from './audit/audit.module';
+import { UsersModule } from './users/users.module';
 import { LoggingInterceptor } from './common/logging.interceptor';
 
 @Module({
@@ -32,6 +34,8 @@ import { LoggingInterceptor } from './common/logging.interceptor';
     StorageModule,
     AuthorizationModule,
     AuthModule,
+    AuditModule,
+    UsersModule,
     ProjectsModule,
     DocumentsModule,
     TenderingModule,

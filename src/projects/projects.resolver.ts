@@ -7,8 +7,18 @@ import { ProjectId } from '../authorization/project-id.decorator';
 import { ProjectPermissionGuard } from '../authorization/project-permission.guard';
 import { RequirePermissions } from '../authorization/permissions.decorator';
 import { PermissionToken } from '../authorization/permission-tokens';
-import { CreateProjectInput, UpdateProjectInput } from './dto/project.inputs';
-import { ProjectModel } from './models/project.models';
+import {
+  CreateProjectInput,
+  CreateProjectModuleInput,
+  UpdateProjectConfigurationInput,
+  UpdateProjectModuleInput,
+  UpdateProjectInput,
+} from './dto/project.inputs';
+import {
+  ProjectConfigurationModel,
+  ProjectModuleModel,
+  ProjectModel,
+} from './models/project.models';
 import { ProjectsService } from './projects.service';
 
 @Resolver(() => ProjectModel)
@@ -52,5 +62,87 @@ export class ProjectsResolver {
   @RequirePermissions(PermissionToken.ProjectConfigure)
   deleteProject(@ProjectId() projectId: string) {
     return this.projectsService.deleteProject(projectId);
+  }
+
+  @Query(() => [ProjectModuleModel])
+  @UseGuards(AuthGuard, ProjectPermissionGuard)
+  @RequirePermissions(PermissionToken.ProjectRead)
+  projectModules(
+    @ProjectId() projectId: string,
+    @Args('includeArchived', { nullable: true }) includeArchived?: boolean,
+  ) {
+    return this.projectsService.listProjectModules(projectId, includeArchived);
+  }
+
+  @Query(() => ProjectModuleModel)
+  @UseGuards(AuthGuard, ProjectPermissionGuard)
+  @RequirePermissions(PermissionToken.ProjectRead)
+  projectModule(
+    @ProjectId() projectId: string,
+    @Args('moduleId') moduleId: string,
+  ) {
+    return this.projectsService.getProjectModule(projectId, moduleId);
+  }
+
+  @Mutation(() => ProjectModuleModel)
+  @UseGuards(AuthGuard, ProjectPermissionGuard)
+  @RequirePermissions(PermissionToken.ProjectConfigure)
+  createProjectModule(
+    @ProjectId() projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('input') input: CreateProjectModuleInput,
+  ) {
+    return this.projectsService.createProjectModule(projectId, input, user.sub);
+  }
+
+  @Mutation(() => ProjectModuleModel)
+  @UseGuards(AuthGuard, ProjectPermissionGuard)
+  @RequirePermissions(PermissionToken.ProjectConfigure)
+  updateProjectModule(
+    @ProjectId() projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('input') input: UpdateProjectModuleInput,
+  ) {
+    return this.projectsService.updateProjectModule(projectId, input, user.sub);
+  }
+
+  @Mutation(() => Boolean)
+  @UseGuards(AuthGuard, ProjectPermissionGuard)
+  @RequirePermissions(PermissionToken.ProjectConfigure)
+  deleteProjectModule(
+    @ProjectId() projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('moduleId') moduleId: string,
+  ) {
+    return this.projectsService.deleteProjectModule(
+      projectId,
+      moduleId,
+      user.sub,
+    );
+  }
+
+  @Mutation(() => ProjectConfigurationModel)
+  @UseGuards(AuthGuard, ProjectPermissionGuard)
+  @RequirePermissions(PermissionToken.ProjectConfigure)
+  updateProjectConfiguration(
+    @ProjectId() projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('input') input: UpdateProjectConfigurationInput,
+  ) {
+    return this.projectsService.updateProjectConfiguration(
+      projectId,
+      input,
+      user.sub,
+    );
+  }
+
+  @Mutation(() => Boolean)
+  @UseGuards(AuthGuard, ProjectPermissionGuard)
+  @RequirePermissions(PermissionToken.ProjectConfigure)
+  deleteProjectConfiguration(
+    @ProjectId() projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.projectsService.deleteProjectConfiguration(projectId, user.sub);
   }
 }

@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -18,6 +20,9 @@ import {
 @Injectable()
 export class AuthService {
   private readonly accessTokenTtlSeconds = 15 * 60;
+  private readonly loginThrottleWindowSeconds = 15 * 60;
+  private readonly registerThrottleWindowSeconds = 60 * 60;
+  private readonly refreshThrottleWindowSeconds = 15 * 60;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -26,9 +31,23 @@ export class AuthService {
     private readonly redisService: RedisService,
   ) {}
 
-  async registerAdmin(input: RegisterAdminInput) {
+  async registerAdmin(input: RegisterAdminInput, clientKey = 'unknown') {
+    const email = input.email.toLowerCase();
+    await this.enforceAuthThrottle(
+      'register-email',
+      email,
+      3,
+      this.registerThrottleWindowSeconds,
+    );
+    await this.enforceAuthThrottle(
+      'register-client',
+      clientKey,
+      20,
+      this.registerThrottleWindowSeconds,
+    );
+
     const existingUser = await this.prisma.user.findUnique({
-      where: { email: input.email.toLowerCase() },
+      where: { email },
     });
 
     if (existingUser) {
@@ -39,7 +58,7 @@ export class AuthService {
 
     const user = await this.prisma.user.create({
       data: {
-        email: input.email.toLowerCase(),
+        email,
         firstName: input.firstName.trim(),
         lastName: input.lastName.trim(),
         passwordHash,
@@ -49,9 +68,23 @@ export class AuthService {
     return this.issueTokens(user.id);
   }
 
-  async login(input: LoginInput) {
+  async login(input: LoginInput, clientKey = 'unknown') {
+    const email = input.email.toLowerCase();
+    await this.enforceAuthThrottle(
+      'login-email',
+      email,
+      10,
+      this.loginThrottleWindowSeconds,
+    );
+    await this.enforceAuthThrottle(
+      'login-client',
+      clientKey,
+      50,
+      this.loginThrottleWindowSeconds,
+    );
+
     const user = await this.prisma.user.findUnique({
-      where: { email: input.email.toLowerCase() },
+      where: { email },
     });
 
     if (!user || user.status !== 'ACTIVE') {
@@ -63,11 +96,25 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials.');
     }
 
+    await this.clearAuthThrottle('login-email', email);
     return this.issueTokens(user.id);
   }
 
-  async refresh(input: RefreshTokenInput) {
+  async refresh(input: RefreshTokenInput, clientKey = 'unknown') {
     const tokenHash = this.hashToken(input.refreshToken);
+    await this.enforceAuthThrottle(
+      'refresh-token',
+      tokenHash,
+      30,
+      this.refreshThrottleWindowSeconds,
+    );
+    await this.enforceAuthThrottle(
+      'refresh-client',
+      clientKey,
+      100,
+      this.refreshThrottleWindowSeconds,
+    );
+
     const session = await this.prisma.refreshSession.findUnique({
       where: { tokenHash },
       include: { user: true },
@@ -176,4 +223,31 @@ export class AuthService {
     return createHash('sha256').update(token).digest('hex');
   }
 
+  private async enforceAuthThrottle(
+    scope: string,
+    identifier: string,
+    limit: number,
+    windowSeconds: number,
+  ) {
+    const key = this.authThrottleKey(scope, identifier);
+    const count = await this.redisService.incrementWithExpiry(
+      key,
+      windowSeconds,
+    );
+
+    if (count > limit) {
+      throw new HttpException(
+        'Too many authentication attempts. Try again later.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+  }
+
+  private async clearAuthThrottle(scope: string, identifier: string) {
+    await this.redisService.delete(this.authThrottleKey(scope, identifier));
+  }
+
+  private authThrottleKey(scope: string, identifier: string) {
+    return `auth-throttle:${scope}:${this.hashToken(identifier)}`;
+  }
 }

@@ -1,11 +1,14 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { DocumentStatus } from '@prisma/client';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { AuditAction, DocumentStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../core/prisma/prisma.service';
 import { StorageService } from '../core/storage/storage.service';
+import { AuditService } from '../audit/audit.service';
 import {
   ConfirmAttachmentUploadInput,
   CreateDocumentInput,
+  DeleteAttachmentInput,
+  RenameAttachmentInput,
   RequestAttachmentUploadInput,
   UpdateDocumentInput,
 } from './dto/document.inputs';
@@ -19,21 +22,29 @@ const documentInclude = {
 const PROJECT_DOCUMENT_OWNER_TYPE = 'PROJECT';
 const TENDER_STAGE_DOCUMENT_OWNER_TYPE = 'PROJECT_TENDER_STAGE';
 
+const MAX_FILENAME_LENGTH = 200;
+const SANITIZE_PATTERN = /[\\/]/g;
+
 @Injectable()
 export class DocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
+    private readonly audit: AuditService,
   ) {}
 
-  async createDocument(projectId: string, input: CreateDocumentInput) {
+  async createDocument(
+    projectId: string,
+    input: CreateDocumentInput,
+    actorUserId?: string,
+  ) {
     const ownerType = this.normalizeOwnerType(input.ownerType);
     await this.ensureOwnerBelongsToProject(projectId, ownerType, input.ownerId);
     const documentDate = input.documentDate
       ? this.parseDocumentDate(input.documentDate)
       : null;
 
-    return this.prisma.document.create({
+    const document = await this.prisma.document.create({
       data: {
         projectId,
         ownerType,
@@ -44,9 +55,26 @@ export class DocumentsService {
       },
       include: documentInclude,
     });
+
+    this.audit.record({
+      action: AuditAction.CREATE,
+      entityType: 'Document',
+      entityId: document.id,
+      projectId,
+      userId: actorUserId,
+      metadata: { ownerType, ownerId: input.ownerId, title: document.title },
+    });
+
+    return document;
   }
 
-  async listDocuments(projectId: string, ownerType?: string, ownerId?: string) {
+  async listDocuments(
+    projectId: string,
+    ownerType?: string,
+    ownerId?: string,
+    take?: number,
+    cursor?: string,
+  ) {
     return this.prisma.document.findMany({
       where: {
         projectId,
@@ -56,16 +84,46 @@ export class DocumentsService {
       },
       include: documentInclude,
       orderBy: [{ createdAt: 'desc' }],
+      ...(take ? { take } : {}),
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
     });
   }
 
-  async updateDocument(projectId: string, input: UpdateDocumentInput) {
+  /**
+   * Bulk fetch documents for a set of owner ids in a single query.
+   * Used by TenderingService to avoid loading every document in the
+   * project when only specific stage/event owners are needed.
+   */
+  async listDocumentsForOwners(
+    projectId: string,
+    ownerType: string,
+    ownerIds: string[],
+  ) {
+    if (ownerIds.length === 0) return [];
+
+    return this.prisma.document.findMany({
+      where: {
+        projectId,
+        ownerType: this.normalizeOwnerType(ownerType),
+        ownerId: { in: ownerIds },
+        status: 'ACTIVE',
+      },
+      include: documentInclude,
+      orderBy: [{ createdAt: 'desc' }],
+    });
+  }
+
+  async updateDocument(
+    projectId: string,
+    input: UpdateDocumentInput,
+    actorUserId?: string,
+  ) {
     await this.ensureDocumentBelongsToProject(projectId, input.documentId);
     const documentDate = input.documentDate
       ? this.parseDocumentDate(input.documentDate)
       : null;
 
-    return this.prisma.document.update({
+    const document = await this.prisma.document.update({
       where: { id: input.documentId },
       data: {
         title: input.title.trim(),
@@ -74,17 +132,52 @@ export class DocumentsService {
       },
       include: documentInclude,
     });
+
+    this.audit.record({
+      action: AuditAction.UPDATE,
+      entityType: 'Document',
+      entityId: document.id,
+      projectId,
+      userId: actorUserId,
+    });
+
+    return document;
   }
 
-  async deleteDocument(projectId: string, documentId: string) {
+  async deleteDocument(projectId: string, documentId: string, actorUserId?: string) {
     const document = await this.ensureDocumentBelongsToProject(projectId, documentId);
 
+    // Soft-delete first so the record disappears from listings immediately
+    // and is never returned mid-cleanup.
+    await this.prisma.document.update({
+      where: { id: document.id },
+      data: { status: DocumentStatus.ARCHIVED },
+    });
+
+    // Best-effort object storage cleanup. Failures are logged via audit
+    // metadata but do not roll back the soft delete — a background sweep
+    // can reconcile orphaned objects keyed off ARCHIVED documents.
     for (const attachment of document.attachments) {
-      await this.storage.removeObject(attachment.objectKey);
+      try {
+        await this.storage.removeObject(attachment.objectKey);
+      } catch {
+        this.audit.record({
+          action: AuditAction.ATTACHMENT_DELETE,
+          entityType: 'DocumentAttachment',
+          entityId: attachment.id,
+          projectId,
+          userId: actorUserId,
+          metadata: { objectKey: attachment.objectKey, cleanupFailed: true },
+        });
+      }
     }
 
-    await this.prisma.document.delete({
-      where: { id: document.id },
+    this.audit.record({
+      action: AuditAction.DELETE,
+      entityType: 'Document',
+      entityId: document.id,
+      projectId,
+      userId: actorUserId,
     });
 
     return true;
@@ -127,17 +220,100 @@ export class DocumentsService {
       );
     }
 
-    return this.prisma.documentAttachment.create({
+    const attachment = await this.prisma.documentAttachment.create({
       data: {
         projectId,
         documentId: input.documentId,
         objectKey: input.objectKey,
-        fileName: input.fileName,
+        fileName: this.sanitizeFileName(input.fileName),
         contentType: input.contentType,
         sizeBytes: input.sizeBytes,
         uploadedById,
       },
     });
+
+    this.audit.record({
+      action: AuditAction.ATTACHMENT_UPLOAD,
+      entityType: 'DocumentAttachment',
+      entityId: attachment.id,
+      projectId,
+      userId: uploadedById,
+      metadata: { documentId: input.documentId, fileName: attachment.fileName },
+    });
+
+    return attachment;
+  }
+
+  async renameAttachment(
+    projectId: string,
+    actorUserId: string,
+    input: RenameAttachmentInput,
+  ) {
+    const attachment = await this.prisma.documentAttachment.findFirst({
+      where: { id: input.attachmentId, projectId },
+    });
+
+    if (!attachment) {
+      throw new NotFoundException(
+        'Document attachment does not belong to this project.',
+      );
+    }
+
+    const fileName = this.sanitizeFileName(input.fileName);
+    if (!fileName) {
+      throw new BadRequestException('A valid file name is required.');
+    }
+
+    const updated = await this.prisma.documentAttachment.update({
+      where: { id: attachment.id },
+      data: { fileName },
+    });
+
+    this.audit.record({
+      action: AuditAction.ATTACHMENT_RENAME,
+      entityType: 'DocumentAttachment',
+      entityId: updated.id,
+      projectId,
+      userId: actorUserId,
+      metadata: { from: attachment.fileName, to: updated.fileName },
+    });
+
+    return updated;
+  }
+
+  async deleteAttachment(
+    projectId: string,
+    actorUserId: string,
+    input: DeleteAttachmentInput,
+  ) {
+    const attachment = await this.prisma.documentAttachment.findFirst({
+      where: { id: input.attachmentId, projectId },
+    });
+
+    if (!attachment) {
+      throw new NotFoundException(
+        'Document attachment does not belong to this project.',
+      );
+    }
+
+    await this.prisma.documentAttachment.delete({ where: { id: attachment.id } });
+
+    try {
+      await this.storage.removeObject(attachment.objectKey);
+    } catch {
+      // Object cleanup best-effort; row is already gone, log via audit metadata.
+    }
+
+    this.audit.record({
+      action: AuditAction.ATTACHMENT_DELETE,
+      entityType: 'DocumentAttachment',
+      entityId: attachment.id,
+      projectId,
+      userId: actorUserId,
+      metadata: { documentId: attachment.documentId, fileName: attachment.fileName },
+    });
+
+    return true;
   }
 
   async getAttachmentDownloadUrl(projectId: string, attachmentId: string) {
@@ -216,7 +392,6 @@ export class DocumentsService {
     throw new BadRequestException('Unsupported document owner type.');
   }
 
-
   private buildObjectKey(
     projectId: string,
     documentId: string,
@@ -228,6 +403,10 @@ export class DocumentsService {
       .slice(0, 120);
 
     return `projects/${projectId}/documents/${documentId}/${randomUUID()}-${sanitizedFileName}`;
+  }
+
+  private sanitizeFileName(fileName: string) {
+    return fileName.trim().replace(SANITIZE_PATTERN, '_').slice(0, MAX_FILENAME_LENGTH);
   }
 
   private normalizeOwnerType(ownerType: string) {

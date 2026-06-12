@@ -6,6 +6,7 @@ export const PermissionToken = {
   RoleManage: 'role:manage',
   DocumentRead: 'document:read',
   DocumentManage: 'document:manage',
+  UserManage: 'user:manage',
 } as const;
 
 export type PermissionTokenValue =
@@ -33,6 +34,10 @@ export const SYSTEM_PERMISSIONS: Array<{
   {
     token: PermissionToken.DocumentManage,
     description: 'Create document records and upload attachments.',
+  },
+  {
+    token: PermissionToken.UserManage,
+    description: 'Create, update, and remove admin users.',
   },
 ];
 

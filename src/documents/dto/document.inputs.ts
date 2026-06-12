@@ -90,3 +90,21 @@ export class ConfirmAttachmentUploadInput {
   @Min(0)
   sizeBytes?: number;
 }
+
+@InputType()
+export class RenameAttachmentInput {
+  @Field()
+  @IsNotEmpty()
+  attachmentId: string;
+
+  @Field()
+  @IsNotEmpty()
+  fileName: string;
+}
+
+@InputType()
+export class DeleteAttachmentInput {
+  @Field()
+  @IsNotEmpty()
+  attachmentId: string;
+}

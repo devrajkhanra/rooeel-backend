@@ -48,7 +48,38 @@ export class CreateTenderStageEventInput {
 
   @Field({ nullable: true })
   @IsOptional()
+  title?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
   note?: string;
+}
+
+@InputType()
+export class UpdateTenderStageEventInput {
+  @Field()
+  @IsNotEmpty()
+  eventId: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  @IsDateString()
+  eventDate?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  title?: string;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  note?: string;
+}
+
+@InputType()
+export class DeleteTenderStageEventInput {
+  @Field()
+  @IsNotEmpty()
+  eventId: string;
 }
 
 @InputType()

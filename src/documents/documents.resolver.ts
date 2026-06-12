@@ -9,6 +9,8 @@ import { ProjectPermissionGuard } from '../authorization/project-permission.guar
 import type { AuthenticatedUser } from '../common/graphql-context';
 import {
   ConfirmAttachmentUploadInput,
+  DeleteAttachmentInput,
+  RenameAttachmentInput,
   RequestAttachmentUploadInput,
   UpdateDocumentInput,
 } from './dto/document.inputs';
@@ -48,6 +50,26 @@ export class DocumentsResolver {
     );
   }
 
+  @Mutation(() => DocumentAttachmentModel)
+  @RequirePermissions(PermissionToken.DocumentManage)
+  renameAttachment(
+    @ProjectId() projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('input') input: RenameAttachmentInput,
+  ) {
+    return this.documentsService.renameAttachment(projectId, user.sub, input);
+  }
+
+  @Mutation(() => Boolean)
+  @RequirePermissions(PermissionToken.DocumentManage)
+  deleteAttachment(
+    @ProjectId() projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Args('input') input: DeleteAttachmentInput,
+  ) {
+    return this.documentsService.deleteAttachment(projectId, user.sub, input);
+  }
+
   @Query(() => PresignedDownloadModel)
   @RequirePermissions(PermissionToken.DocumentRead)
   attachmentDownloadUrl(
@@ -64,17 +86,23 @@ export class DocumentsResolver {
   @RequirePermissions(PermissionToken.DocumentManage)
   updateDocument(
     @ProjectId() projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Args('input') input: UpdateDocumentInput,
   ) {
-    return this.documentsService.updateDocument(projectId, input);
+    return this.documentsService.updateDocument(projectId, input, user.sub);
   }
 
   @Mutation(() => Boolean)
   @RequirePermissions(PermissionToken.DocumentManage)
   deleteDocument(
     @ProjectId() projectId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Args('documentId') documentId: string,
   ) {
-    return this.documentsService.deleteDocument(projectId, documentId);
+    return this.documentsService.deleteDocument(
+      projectId,
+      documentId,
+      user.sub,
+    );
   }
 }

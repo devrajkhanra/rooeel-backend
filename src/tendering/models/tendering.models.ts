@@ -62,6 +62,9 @@ export class TenderStageEventModel {
   @Field(() => TenderStageEventType)
   eventType: TenderStageEventType;
 
+  @Field({ nullable: true })
+  title?: string;
+
   @Field()
   eventDate: Date;
 
